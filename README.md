@@ -158,7 +158,26 @@ A planilha Google criada pelo script organiza os dados em 5 abas padronizadas:
 
 ---
 
+## 🌐 Publicação no GitHub Pages
 
+Para colocar o seu sistema no ar gratuitamente em seu próprio domínio GitHub:
+
+1. Suba os arquivos deste repositório para sua conta no GitHub:
+   ```bash
+   git init
+   git add .
+   git commit -m "HidroManager: Versão Inicial"
+   git branch -M main
+   git remote add origin https://github.com/SEU-USUARIO/SEU-REPOSITORIO.git
+   git push -u origin main
+   ```
+2. No repositório no GitHub, acesse **Settings ⚙️ ➔ Pages**.
+3. Em **Build and deployment ➔ Branch**, selecione **`main`** e pasta **`/(root)`**.
+4. Clique em **Save**.
+5. Em 1 a 2 minutos o link estará disponível:  
+   👉 `https://seu-usuario.github.io/seu-repositorio/`
+
+---
 
 ## 📄 Licença
 
