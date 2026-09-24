@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>HidroManager - Sistema de Gestão Hidropônica</title>
+  <meta name="description" content="Sistema web profissional para gestão e croqui interativo de estufas hidropônicas NFT com integração Google Sheets.">
+  <link rel="stylesheet" href="style.css?v=4.9">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2310b981'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z'/></svg>">
+</head>
+<body>
+  <div id="app-container">
+    
+    <!-- Top Navbar / Toolbar Principal -->
+    <header class="top-navbar" role="banner">
+      <div class="brand-section">
+        <div class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12C2 6.477 6.477 2 12 2z"></path>
+            <path d="M12 6v12"></path>
+            <path d="M7 10l5-4 5 4"></path>
+            <path d="M8 15c2 1.5 6 1.5 8 0"></path>
+          </svg>
+        </div>
+        <div class="brand-info">
+          <h1>HidroManager <span class="brand-badge">Bancadas NFT</span></h1>
+        </div>
+      </div>
+
+      <!-- Ações da Toolbar Limpa e Otimizada -->
+      <nav class="toolbar-actions" aria-label="Ferramentas do Croqui">
+        <button id="tool-select" class="tool-btn active" title="Modo Padrão: Selecionar e Inspecionar Bancadas">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path>
+          </svg>
+          <span>Inspecionar</span>
+        </button>
+
+        <!-- Menu Dropdown de Bancadas (Unificado com Espelhar Lado) -->
+        <div class="dropdown-container" id="dropdown-bancadas">
+          <button type="button" id="btn-menu-bancadas" class="btn-primary" title="Gerenciar e Inserir Bancadas no Croqui">
+            <span style="font-size: 1.05rem;">🌱</span>
+            <span>Bancadas</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left: 2px;">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+
+          <div class="dropdown-menu" id="menu-bancadas-options">
+            <button type="button" class="dropdown-item" id="opt-add-definitivo">
+              <span class="dropdown-item-icon">🌱</span>
+              <div class="dropdown-item-info">
+                <strong>+ Bancada Definitiva</strong>
+                <small>Engorda (6m x 1.5m, 8 perfis)</small>
+              </div>
+            </button>
+            <button type="button" class="dropdown-item" id="opt-add-maternidade">
+              <span class="dropdown-item-icon">🌿</span>
+              <div class="dropdown-item-info">
+                <strong>+ Bancada Maternidade</strong>
+                <small>Alta densidade (6m x 1.2m, 12 perfis)</small>
+              </div>
+            </button>
+            <button type="button" class="dropdown-item" id="opt-add-bercario">
+              <span class="dropdown-item-icon">☘️</span>
+              <div class="dropdown-item-info">
+                <strong>+ Bancada Berçário</strong>
+                <small>Intermediário (6m x 1.2m, 10 perfis)</small>
+              </div>
+            </button>
+            <div class="dropdown-divider"></div>
+            <button type="button" class="dropdown-item" id="opt-espelhar-lado">
+              <span class="dropdown-item-icon">🔄</span>
+              <div class="dropdown-item-info">
+                <strong>Espelhar Bancadas (Esquerda ➔ Direita)</strong>
+                <small>Clonar simetricamente para o outro lado</small>
+              </div>
+            </button>
+            <div class="dropdown-divider"></div>
+            <button type="button" class="dropdown-item" id="opt-config-templates">
+              <span class="dropdown-item-icon">⚙️</span>
+              <div class="dropdown-item-info">
+                <strong>Configurar Medidas & Templates</strong>
+                <small>Dimensões padrão, perfis e furação</small>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <button id="btn-config-area" class="tool-btn" title="Configurar dimensões da estufa">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Área (Estufa)</span>
+        </button>
+
+        <button type="button" id="btn-catalogo-culturas" class="tool-btn" onclick="abrirModalCatalogoCulturas()" title="Gerenciar e cadastrar culturas e variedades pré-cadastradas">
+          <span style="font-size: 0.95rem;">🌿</span>
+          <span>Culturas</span>
+        </button>
+
+        <!-- Botão Direto: Salvar Projeto (.json) -->
+        <button type="button" id="btn-save-project" class="btn-primary" title="Salva no navegador e baixa o arquivo JSON completo de projeto" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+          <span>Salvar Projeto (.json)</span>
+        </button>
+
+        <!-- Botão Direto: Abrir Projeto (.json) -->
+        <button type="button" id="btn-open-project" class="tool-btn" title="Carregar / Restaurar projeto de arquivo JSON do computador">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span>Abrir Projeto</span>
+        </button>
+
+        <!-- Menu Dropdown de Mais Opções (Local / Sheets) -->
+        <div class="dropdown-container" id="dropdown-salvar">
+          <button type="button" id="btn-save-menu" class="tool-btn dropdown-toggle" title="Outras opções de salvamento e Google Sheets">
+            <span>Opções</span>
+            <span class="dropdown-arrow">▼</span>
+          </button>
+
+          <div class="dropdown-menu align-right" id="menu-save-options">
+            <button type="button" class="dropdown-item" id="opt-save-local">
+              <span class="dropdown-item-icon">💾</span>
+              <div class="dropdown-item-info">
+                <strong>Salvar no Navegador</strong>
+                <small>Armazenamento local (LocalStorage)</small>
+              </div>
+            </button>
+            <button type="button" class="dropdown-item" id="opt-export-json">
+              <span class="dropdown-item-icon">📥</span>
+              <div class="dropdown-item-info">
+                <strong>Baixar Arquivo JSON (Backup)</strong>
+                <small>Exportar croqui para o computador</small>
+              </div>
+            </button>
+            <button type="button" class="dropdown-item" id="opt-import-json">
+              <span class="dropdown-item-icon">📤</span>
+              <div class="dropdown-item-info">
+                <strong>Carregar / Importar JSON</strong>
+                <small>Restaurar croqui de um arquivo</small>
+              </div>
+            </button>
+            <div class="dropdown-divider"></div>
+            <button type="button" class="dropdown-item" id="opt-open-sheets-config">
+              <span class="dropdown-item-icon">☁️</span>
+              <div class="dropdown-item-info">
+                <strong>Conectar Google Sheets</strong>
+                <small>Configurar Web App Google Apps Script</small>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <button id="btn-theme-toggle" class="tool-btn" title="Alternar Modo Claro / Escuro">
+          <span id="theme-icon">🌙</span>
+          <span id="theme-label">Escuro</span>
+        </button>
+
+        <div id="btn-sheets-sync" class="sync-status" title="Status de Sincronização Google Sheets">
+          <span id="sync-dot" class="status-dot"></span>
+          <span id="sync-label">Google Sheets</span>
+        </div>
+
+        <!-- Widget de Usuário / Autenticação -->
+        <div class="user-session-widget dropdown-container" id="user-session-widget">
+          <button type="button" id="btn-user-auth" class="user-pill-btn visitor" title="Gerenciar sessão de usuário">
+            <span id="user-badge-icon" class="user-badge-icon">👁️</span>
+            <div class="user-badge-details">
+              <strong id="user-display-name">Visitante</strong>
+              <small id="user-display-role">Somente Leitura</small>
+            </div>
+            <span id="user-badge-action-tag" class="user-action-tag">Entrar</span>
+          </button>
+
+          <div id="user-dropdown-menu" class="dropdown-menu align-right" style="min-width: 220px;">
+            <div style="padding: 10px 14px; border-bottom: 1px solid var(--border-subtle);">
+              <small style="color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase;">Sessão Ativa</small>
+              <div id="dropdown-user-name" style="font-weight: 700; color: var(--text-primary); font-size: 0.92rem;">Visitante</div>
+              <small id="dropdown-user-role" style="color: var(--primary); font-size: 0.75rem;">Somente Leitura</small>
+            </div>
+            <button type="button" class="dropdown-item" id="btn-menu-open-login" style="display: flex;">
+              <span class="dropdown-item-icon">🔑</span>
+              <div class="dropdown-item-info">
+                <strong>Fazer Login</strong>
+                <small>Entrar como Gestor ou Operador</small>
+              </div>
+            </button>
+            <button type="button" class="dropdown-item" id="btn-menu-gestor-panel" style="display: none;">
+              <span class="dropdown-item-icon">👑</span>
+              <div class="dropdown-item-info">
+                <strong>Painel de Usuários</strong>
+                <small>Cadastrar operadores e senhas</small>
+              </div>
+            </button>
+            <button type="button" class="dropdown-item" id="btn-menu-logout" style="display: none;">
+              <span class="dropdown-item-icon">🚪</span>
+              <div class="dropdown-item-info">
+                <strong>Sair da Conta</strong>
+                <small>Voltar ao modo somente leitura</small>
+              </div>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Input invisível para upload de arquivo JSON de backup -->
+      <input type="file" id="input-file-json" accept=".json,application/json" style="display: none;">
+    </header>
+
+    <!-- Barra de Filtros Rápidos -->
+    <section class="filter-bar" aria-label="Filtros de Visualização">
+      <div class="filter-item">
+        <label for="filter-cultura">Variedade / Cultura:</label>
+        <select id="filter-cultura" class="filter-select">
+          <option value="ALL">Todas as Culturas</option>
+        </select>
+      </div>
+
+      <div class="filter-item">
+        <label for="filter-fase">Fase / Idade:</label>
+        <select id="filter-fase" class="filter-select">
+          <option value="ALL">Todas as Fases</option>
+          <option value="INITIAL">Fase Inicial (0% - 30%)</option>
+          <option value="GROWTH">Vegetativo Pleno (31% - 80%)</option>
+          <option value="HARVEST">Ponto de Colheita (81% - 100%+)</option>
+          <option value="EMPTY">Desocupados / Higienização</option>
+        </select>
+      </div>
+
+      <div class="filter-item">
+        <label for="filter-setor">Focar Setor:</label>
+        <select id="filter-setor" class="filter-select">
+          <option value="ALL">Visão Geral (Ambos)</option>
+          <option value="ESQUERDO">Setor Esquerdo</option>
+          <option value="DIREITO">Setor Direito</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Canvas Principal do Croqui -->
+    <main class="canvas-viewport" id="canvas-viewport" role="region" aria-label="Croqui Interativo da Estufa">
+      <canvas id="cropCanvas"></canvas>
+
+      <!-- Banner Flutuante de Inserção / Rotação Rápida -->
+      <div id="canvas-insert-banner" class="canvas-insert-banner hidden" role="status">
+        <span>Inserindo: <strong id="banner-tool-name">+ Definitivo</strong></span>
+        <span>•</span>
+        <span>Direção: <strong id="banner-orientacao">↔ Transversal</strong></span>
+        <button type="button" id="banner-btn-rotate" class="banner-btn" title="Girar Direção da Bancada (Tecla R)">
+          <span>Girar</span> <span class="kbd-shortcut">R</span>
+        </button>
+        <button type="button" id="banner-btn-config" class="banner-btn" title="Configurar Medidas, Perfis e Furos">
+          <span>⚙️ Medidas</span>
+        </button>
+      </div>
+
+      <!-- Banner Flutuante de Reposicionamento Seguro de Bancada -->
+      <div id="canvas-move-banner" class="canvas-insert-banner canvas-move-banner hidden" role="status">
+        <span style="display: flex; align-items: center; gap: 6px;">
+          <span>📍</span>
+          <span>Movendo: <strong id="move-banner-bloco-id">Bancada B-01</strong></span>
+          <span style="opacity: 0.6;">•</span>
+          <span id="move-banner-coords">Posição: 0.5m, 2.0m</span>
+        </span>
+        <button type="button" id="btn-save-block-pos" class="banner-btn btn-save-pos" title="Confirmar e Salvar Nova Posição">
+          <span>💾 Salvar Localização</span>
+        </button>
+        <button type="button" id="btn-cancel-block-pos" class="banner-btn btn-cancel-pos" title="Cancelar e Voltar à Posição Anterior">
+          <span>❌ Cancelar</span>
+        </button>
+      </div>
+
+      <!-- Badge de Coordenadas e Modo -->
+      <div class="canvas-info-badge" id="canvas-info-badge">
+        <span>Modo: <strong id="info-mode">Inspecionar</strong></span>
+        <span>Posição: <strong id="info-coords">0.0m, 0.0m</strong></span>
+        <span>Blocos: <strong id="info-block-count">0</strong></span>
+      </div>
+
+      <!-- Tooltip flutuante para hover em bancadas -->
+      <div id="canvas-block-tooltip" class="canvas-block-tooltip" role="tooltip" aria-hidden="true"></div>
+
+      <!-- Mini HUD de Legenda Cromática -->
+      <div class="hud-legend" aria-label="Legenda Cromática de Ciclo">
+        <span class="hud-legend-title">Status do Ciclo</span>
+        <div class="legend-items">
+          <div class="legend-item" title="0% a 30% do ciclo previsto">
+            <span class="legend-color c-initial"></span>
+            <span>Inicial (0-30%)</span>
+          </div>
+          <div class="legend-item" title="31% a 80% do ciclo previsto">
+            <span class="legend-color c-growth"></span>
+            <span>Vegetativo (31-80%)</span>
+          </div>
+          <div class="legend-item" title="81% a 100%+ do ciclo">
+            <span class="legend-color c-harvest"></span>
+            <span>Colheita (81-100%+)</span>
+          </div>
+          <div class="legend-item" title="Bloco vago ou em higienização">
+            <span class="legend-color c-empty"></span>
+            <span>Desocupado</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controles Flutuantes de Câmera -->
+      <div class="canvas-controls" aria-label="Controles de Zoom e Navegação">
+        <button id="btn-zoom-in" class="control-btn" title="Aproximar Zoom">+</button>
+        <button id="btn-zoom-out" class="control-btn" title="Afastar Zoom">-</button>
+        <button id="btn-zoom-reset" class="control-btn" title="Ajustar e Centralizar Estufa">⛶</button>
+        <button id="btn-snap-toggle" class="control-btn active" title="Alternar Encaixe Magnético (Snap-to-Grid)">🧲</button>
+      </div>
+    </main>
+
+    <!-- Painel de Inspeção do Bloco (Bottom Sheet no Mobile / Lateral no Desktop) -->
+    <aside id="block-inspector" class="block-inspector" aria-hidden="true">
+      <div class="sheet-drag-handle" id="sheet-drag-handle"></div>
+      <div class="inspector-header">
+        <div class="inspector-title-area">
+          <h2 id="inspector-bloco-id">Bancada B-01</h2>
+          <div class="inspector-meta">
+            <span id="inspector-tipo-tag">Definitivo (8 perfis)</span>
+            <span>•</span>
+            <span id="inspector-setor-tag">Setor Esquerdo</span>
+            <span>•</span>
+            <span id="inspector-furos-tag">Furo: 50mm (25cm)</span>
+          </div>
+        </div>
+        <button id="btn-close-inspector" class="modal-close-btn" title="Fechar Painel">✕</button>
+      </div>
+
+      <div class="inspector-content">
+        <!-- Card de Progresso do Cultivo Atual -->
+        <div class="cycle-progress-card">
+          <div class="progress-header">
+            <div>
+              <span id="inspector-cultura" style="font-weight: 700; color: var(--text-primary); font-size: 1.05rem;">Alface Crespa</span>
+              <div id="inspector-variedade" style="font-size: 0.78rem; color: var(--text-secondary);">Variedade: Grand Rapids</div>
+            </div>
+            <span id="inspector-progress-pct" class="progress-pct">65%</span>
+          </div>
+
+          <div class="progress-bar-container">
+            <div id="inspector-progress-bar" class="progress-bar-fill" style="width: 65%;"></div>
+          </div>
+
+          <div class="cycle-stats-grid">
+            <div class="stat-box">
+              <div class="stat-label">Plantio</div>
+              <div id="inspector-data-plantio" class="stat-value">12/08</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Dias Cultivo</div>
+              <div id="inspector-dias-decorridos" class="stat-value">18 dias</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Dias P/ Colheita</div>
+              <div id="inspector-dias-restantes" class="stat-value">7 dias</div>
+            </div>
+          </div>
+
+          <!-- Card de Estoque de Plantas na Bancada -->
+          <div class="stock-status-box" id="inspector-stock-box">
+            <div class="stock-header">
+              <span class="stock-title">🌱 Estoque na Bancada</span>
+              <strong id="inspector-stock-count" class="stock-count">192 / 192 plantas</strong>
+            </div>
+            <div class="stock-bar-container">
+              <div id="inspector-stock-bar" class="stock-bar-fill" style="width: 100%;"></div>
+            </div>
+            <div class="stock-subinfo">
+              <span id="inspector-stock-subinfo">0 plantas colhidas</span>
+              <span id="inspector-stock-pct">100% disponível</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botões de Ação Rápida -->
+        <div class="inspector-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button id="btn-open-trato-modal" class="btn-secondary" style="flex: 1; min-width: 110px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            <span>Novo Trato</span>
+          </button>
+
+          <button id="btn-open-colheita-modal" class="btn-primary btn-colheita" style="flex: 1.2; min-width: 140px;" title="Registrar colheita / retirada parcial ou total">
+            <span>🌾 Colheita / Retirada</span>
+          </button>
+
+          <button id="btn-editar-cultivo" class="btn-secondary" onclick="abrirModalEditarCultivo()" style="flex: 1; min-width: 110px;" title="Editar dados da cultura ou ciclo em andamento">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+            <span>Editar Cultivo</span>
+          </button>
+
+          <button id="btn-toggle-ciclo" class="btn-secondary" style="flex: 1; min-width: 110px;">
+            <span id="label-toggle-ciclo">Finalizar Ciclo</span>
+          </button>
+        </div>
+
+        <!-- Botão para abrir o Histórico & Gráficos ao lado em janela dedicada -->
+        <div class="inspector-history-card">
+          <div class="history-summary-header">
+            <span style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+              <span>📋</span>
+              <span>Histórico & Retiradas</span>
+            </span>
+            <span id="inspector-history-count" class="badge-pill-count">0 registros</span>
+          </div>
+          <p style="font-size: 0.76rem; color: var(--text-muted); margin: 6px 0 10px 0; line-height: 1.35;">
+            Visualize a linha do tempo completa de manejos e o gráfico interativo de evolução do estoque.
+          </p>
+          <button type="button" id="btn-open-history-modal" class="btn-secondary" style="width: 100%; justify-content: center; font-weight: 600; border-color: var(--primary); color: var(--primary);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M3 3v18h18"></path>
+              <path d="M18 17V9"></path>
+              <path d="M13 17V5"></path>
+              <path d="M8 17v-3"></path>
+            </svg>
+            <span>Visualizar Histórico & Gráfico</span>
+          </button>
+        </div>
+        
+        <!-- Botões de Ação na Bancada -->
+        <button id="btn-reposition-bloco" class="btn-secondary" style="border-color: #3b82f6; color: #2563eb; font-weight: 600;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="5 9 2 12 5 15"></polyline>
+            <polyline points="9 5 12 2 15 5"></polyline>
+            <polyline points="15 19 12 22 9 19"></polyline>
+            <polyline points="19 9 22 12 19 15"></polyline>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <line x1="12" y1="2" x2="12" y2="22"></line>
+          </svg>
+          <span>📍 Mover / Reposicionar no Croqui</span>
+        </button>
+
+        <button id="btn-edit-bloco" class="btn-secondary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Editar Dimensões, Perfis & Furos</span>
+        </button>
+
+        <button id="btn-delete-bloco" class="btn-secondary" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          <span>Excluir esta Bancada</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- =====================================================================
+         MODAIS
+         ===================================================================== -->
+
+    <!-- Modal 1: Registrar Novo Trato Cultural -->
+    <div id="modal-trato" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-modal-trato">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="title-modal-trato">Registrar Trato Cultural</h3>
+          <button class="modal-close-btn" data-close="modal-trato">✕</button>
+        </div>
+        <form id="form-trato">
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Seleção Rápida de Manejo:</label>
+              <div class="trato-quick-tags" id="trato-tags-container">
+                <button type="button" class="trato-tag-btn active" data-value="Limpeza de canaleta">Limpeza de canaleta</button>
+                <button type="button" class="trato-tag-btn" data-value="Adição de nutrientes">Adição de nutrientes</button>
+                <button type="button" class="trato-tag-btn" data-value="Correção de pH">Correção de pH</button>
+                <button type="button" class="trato-tag-btn" data-value="Controle sanitário">Controle sanitário</button>
+                <button type="button" class="trato-tag-btn" data-value="Manutenção hidráulica">Manutenção hidráulica</button>
+              </div>
+              <input type="hidden" id="trato-tipo-input" name="tipo_manejo" value="Limpeza de canaleta" required>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="trato-responsavel">Responsável:</label>
+                <input type="text" id="trato-responsavel" class="form-control" placeholder="Nome do técnico / operador" required value="Operador Geral">
+              </div>
+              <div class="form-group">
+                <label for="trato-data-hora">Data e Hora:</label>
+                <input type="datetime-local" id="trato-data-hora" class="form-control" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="trato-obs">Detalhes e Observações:</label>
+              <textarea id="trato-obs" class="form-control" rows="3" placeholder="Ex: Adicionado 150ml de Solução A + B; Ajustado pH de 6.8 para 5.8"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" data-close="modal-trato">Cancelar</button>
+            <button type="submit" class="btn-primary">Salvar Trato Cultural</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 2: Iniciar Novo Ciclo de Cultivo -->
+    <div id="modal-novo-ciclo" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-modal-ciclo">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="title-modal-ciclo">Iniciar Ciclo de Cultivo</h3>
+          <button class="modal-close-btn" data-close="modal-novo-ciclo">✕</button>
+        </div>
+        <form id="form-novo-ciclo">
+          <div class="modal-body">
+            <!-- Seleção a partir do Catálogo de Culturas Pré-Cadastradas -->
+            <div class="form-group" style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); padding: 12px 14px; border-radius: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label for="ciclo-cultura-select" style="font-weight: 600; color: var(--text-primary); margin: 0;">🌿 Selecionar do Catálogo de Culturas:</label>
+                <button type="button" id="btn-quick-novo-catalogo" onclick="abrirModalCatalogoCulturas()" style="background: transparent; border: none; color: #10b981; font-size: 0.78rem; font-weight: 600; cursor: pointer; text-decoration: underline;">
+                  + Cadastrar Nova
+                </button>
+              </div>
+              <select id="ciclo-cultura-select" class="form-control" style="font-weight: 600;">
+                <!-- Populado dinamicamente via JS -->
+              </select>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="ciclo-cultura">Nome da Cultura:</label>
+                <input type="text" id="ciclo-cultura" class="form-control" placeholder="Ex: Alface Crespa, Rúcula, Agrião" required value="Alface Crespa">
+              </div>
+              <div class="form-group">
+                <label for="ciclo-variedade">Variedade (Opcional):</label>
+                <input type="text" id="ciclo-variedade" class="form-control" placeholder="Ex: Grand Rapids (opcional)">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="ciclo-data-plantio">Data do Plantio:</label>
+                <input type="date" id="ciclo-data-plantio" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="ciclo-data-colheita">Previsão de Colheita:</label>
+                <input type="date" id="ciclo-data-colheita" class="form-control" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="ciclo-lote-nutritivo">Lote / Fórmula Nutritiva:</label>
+              <input type="text" id="ciclo-lote-nutritivo" class="form-control" placeholder="Ex: Lote N-2026/08 (EC 1.6 mS/cm)" value="Nutri-Standard A+B">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" data-close="modal-novo-ciclo">Cancelar</button>
+            <button type="submit" class="btn-primary">Iniciar Plantio</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 3: Configuração da Área / Estufa -->
+    <div id="modal-config-area" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-modal-area">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="title-modal-area">Configurações da Estufa</h3>
+          <button class="modal-close-btn" data-close="modal-config-area">✕</button>
+        </div>
+        <form id="form-config-area">
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="area-nome">Nome da Área / Módulo:</label>
+              <input type="text" id="area-nome" class="form-control" required value="Estufa Principal 01">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="area-comprimento">Comprimento Total (m):</label>
+                <input type="number" step="0.5" min="5" max="200" id="area-comprimento" class="form-control" required value="30">
+              </div>
+              <div class="form-group">
+                <label for="area-largura">Largura Total (m):</label>
+                <input type="number" step="0.5" min="4" max="100" id="area-largura" class="form-control" required value="16">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="area-corredor">Largura do Corredor Central (m):</label>
+              <input type="number" step="0.2" min="1" max="10" id="area-corredor" class="form-control" required value="2.0">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" data-close="modal-config-area">Cancelar</button>
+            <button type="submit" class="btn-primary">Aplicar Dimensões</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 4: Configuração e Conexão Google Sheets -->
+    <div id="modal-sheets" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-modal-sheets">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="title-modal-sheets">Integração Google Sheets (Apps Script)</h3>
+          <button class="modal-close-btn" data-close="modal-sheets">✕</button>
+        </div>
+        <form id="form-sheets">
+          <div class="modal-body">
+            <p style="font-size: 0.84rem; color: var(--text-secondary); line-height: 1.5;">
+              Conecte sua planilha Google usando a URL do Web App gerada pelo <code>Google Apps Script</code>. O sistema continuará operando localmente se estiver offline.
+            </p>
+
+            <div class="form-group">
+              <label for="sheets-url">URL do Web App (Google Apps Script):</label>
+              <input type="url" id="sheets-url" class="form-control" placeholder="https://script.google.com/macros/s/.../exec">
+            </div>
+
+            <div style="background: rgba(0,0,0,0.25); padding: 12px; border-radius: 8px; font-size: 0.78rem; color: var(--text-muted);">
+              <strong>Como obter a URL:</strong><br>
+              1. Abra a planilha no Google Sheets.<br>
+              2. Acesse <em>Extensões &gt; Apps Script</em> e cole o código do arquivo <code>Code.gs</code>.<br>
+              3. Clique em <em>Implantar &gt; Nova implantação &gt; App da Web</em>.<br>
+              4. Configure o acesso como <strong>"Qualquer pessoa"</strong> (Anyone) e copie a URL gerada.
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="btn-sync-now" class="btn-secondary">Sincronizar Agora</button>
+            <button type="submit" class="btn-primary">Salvar Conexão</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 5: Configuração Detalhada da Bancada (Perfis, Furos Triangulares, Dimensões) -->
+    <div id="modal-config-bloco" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-config-bloco">
+      <div class="modal-card" style="max-width: 620px;">
+        <div class="modal-header">
+          <h3 id="title-config-bloco">Configurar Bancada Hidropônica</h3>
+          <button class="modal-close-btn" data-close="modal-config-bloco">✕</button>
+        </div>
+        <form id="form-config-bloco">
+          <div class="modal-body">
+            <div class="form-group" id="group-config-bloco-id">
+              <label for="config-bloco-id">Identificação da Bancada (ID / Nome):</label>
+              <input type="text" id="config-bloco-id" class="form-control" placeholder="Ex: BE-01, BD-02, Bancada 01" style="font-weight: 700; color: var(--primary);">
+              <small style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Você pode alterar livremente o código ou nome desta bancada.</small>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="config-tipo-bloco">Tipo de Bancada:</label>
+                <select id="config-tipo-bloco" class="form-control">
+                  <option value="definitivo">Definitivo (Engorda)</option>
+                  <option value="maternidade">Maternidade (Alta densidade)</option>
+                  <option value="bercario">Berçário (Intermediário)</option>
+                  <option value="personalizado">Personalizado</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="config-orientacao">Direção / Orientação:</label>
+                <select id="config-orientacao" class="form-control">
+                  <option value="horizontal">↔ Transversal (Horizontal - Perpendicular ao corredor)</option>
+                  <option value="vertical">↕ Longitudinal (Vertical - Paralelo ao corredor)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row" id="row-pos-bloco">
+              <div class="form-group">
+                <label for="config-pos-x">Posição X (m):</label>
+                <input type="number" step="0.1" min="0" max="100" id="config-pos-x" class="form-control" value="0.5">
+              </div>
+              <div class="form-group">
+                <label for="config-pos-y">Posição Y (m):</label>
+                <input type="number" step="0.1" min="0" max="200" id="config-pos-y" class="form-control" value="2.0">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="config-comprimento">Comprimento dos Perfis (m):</label>
+                <input type="number" step="0.1" min="1" max="50" id="config-comprimento" class="form-control" required value="6.0">
+              </div>
+              <div class="form-group">
+                <label for="config-largura">Largura da Bancada (m):</label>
+                <input type="number" step="0.05" min="0.5" max="5" id="config-largura" class="form-control" required value="1.5">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="config-qtd-perfis">Quantidade de Perfis (Canais):</label>
+                <input type="number" min="2" max="30" id="config-qtd-perfis" class="form-control" required value="8">
+              </div>
+              <div class="form-group">
+                <label for="config-espaco-perfis">Espaçamento Perfis (cm):</label>
+                <input type="text" id="config-espaco-perfis" class="form-control" value="18.5 cm" readonly style="opacity: 0.85;">
+              </div>
+            </div>
+
+            <div class="form-row form-row-3">
+              <div class="form-group">
+                <label for="config-alinhamento-furos">Alinhamento dos Furos:</label>
+                <select id="config-alinhamento-furos" class="form-control">
+                  <option value="triangular">🟢 Triangular / Quincôncio (Zigue-zague intercalado)</option>
+                  <option value="paralelo">⚪ Paralelo / Reto (Lado a lado)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="config-espaco-furos">Espaçamento Furos (cm):</label>
+                <input type="number" step="1" min="5" max="100" id="config-espaco-furos" class="form-control" required value="25">
+              </div>
+              <div class="form-group">
+                <label for="config-diametro-furo">Tamanho do Furo (mm):</label>
+                <input type="number" step="1" min="20" max="150" id="config-diametro-furo" class="form-control" required value="50" title="Diâmetro do furo na canaleta (ex: 50mm para alface, 35mm para maternidade)">
+              </div>
+            </div>
+
+            <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.85rem; color: var(--text-secondary);">Capacidade estimada da bancada:</span>
+              <strong id="config-total-furos-preview" style="font-size: 1.1rem; color: #34d399;">192 plantas</strong>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" data-close="modal-config-bloco">Cancelar</button>
+            <button type="submit" id="btn-save-config-bloco" class="btn-primary">Aplicar Alterações</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 6: Confirmação de Exclusão de Bancada -->
+    <div id="modal-confirm-delete" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-confirm-delete">
+      <div class="modal-card" style="max-width: 420px;">
+        <div class="modal-header">
+          <h3 id="title-confirm-delete" style="color: #ef4444; display: flex; align-items: center; gap: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <span>Excluir Bancada</span>
+          </h3>
+          <button class="modal-close-btn" data-close="modal-confirm-delete">✕</button>
+        </div>
+        <div class="modal-body">
+          <p id="delete-prompt-msg" style="font-size: 0.95rem; color: var(--text-primary); font-weight: 600;">
+            Tem certeza que deseja excluir esta bancada?
+          </p>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; margin-top: 6px;">
+            Esta ação removerá a estrutura do croqui e o histórico de manejos desta bancada.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" data-close="modal-confirm-delete">Cancelar</button>
+          <button type="button" id="btn-confirm-delete-action" class="btn-primary" style="background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); color: white;">
+            Sim, Excluir Bancada
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal 7: Registrar Colheita / Retirada com Controle de Estoque -->
+    <div id="modal-colheita" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-modal-colheita">
+      <div class="modal-card" style="max-width: 480px;">
+        <div class="modal-header">
+          <h3 id="title-modal-colheita" style="display: flex; align-items: center; gap: 8px; color: #10b981;">
+            <span>🌾</span>
+            <span>Registrar Colheita / Retirada</span>
+          </h3>
+          <button class="modal-close-btn" data-close="modal-colheita">✕</button>
+        </div>
+        <form id="form-colheita">
+          <div class="modal-body">
+            <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); padding: 12px 14px; border-radius: 8px; margin-bottom: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <strong id="colheita-modal-bloco-id" style="font-size: 0.95rem; color: var(--text-primary);">Bancada B-01</strong>
+                <span id="colheita-modal-cultura" style="font-size: 0.85rem; color: #10b981; font-weight: 600;">Alface Crespa</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--text-secondary);">
+                <span>Estoque Disponível na Bancada:</span>
+                <strong id="colheita-modal-disponivel" style="color: var(--text-primary); font-size: 0.9rem;">192 plantas</strong>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="colheita-qtd">Quantidade a Colher / Retirar (plantas):</label>
+              <input type="number" id="colheita-qtd" class="form-control" min="1" max="192" required value="50" style="font-size: 1.1rem; font-weight: 700; color: #10b981;">
+              
+              <!-- Botões rápidos de percentual -->
+              <div style="display: flex; gap: 6px; margin-top: 8px;">
+                <button type="button" class="btn-secondary btn-quick-qtd" data-pct="0.1" style="flex: 1; padding: 4px 6px; font-size: 0.72rem;">10%</button>
+                <button type="button" class="btn-secondary btn-quick-qtd" data-pct="0.25" style="flex: 1; padding: 4px 6px; font-size: 0.72rem;">25%</button>
+                <button type="button" class="btn-secondary btn-quick-qtd" data-pct="0.5" style="flex: 1; padding: 4px 6px; font-size: 0.72rem;">50%</button>
+                <button type="button" class="btn-secondary btn-quick-qtd" data-pct="1.0" style="flex: 1; padding: 4px 6px; font-size: 0.72rem; font-weight: 600;">100% (Tudo)</button>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="colheita-data-hora">Data e Hora da Retirada:</label>
+                <input type="datetime-local" id="colheita-data-hora" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="colheita-responsavel">Responsável:</label>
+                <input type="text" id="colheita-responsavel" class="form-control" required value="Operador Geral">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="colheita-destino">Destino / Cliente / Observação:</label>
+              <input type="text" id="colheita-destino" class="form-control" placeholder="Ex: Feira de Domingo, Mercado Central, Venda Direta" required value="Feira de Domingo">
+            </div>
+
+            <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 12px; margin-top: 6px;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.82rem; color: var(--text-primary); margin: 0;">
+                <input type="checkbox" id="colheita-check-finalizar" style="accent-color: #10b981; width: 16px; height: 16px;">
+                <span>Finalizar ciclo e liberar bancada após esta colheita (Bancada Vaga)</span>
+              </label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" data-close="modal-colheita">Cancelar</button>
+            <button type="submit" class="btn-primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+              Confirmar Colheita
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 8: Histórico Completo de Manejo & Gráfico de Retiradas / Estoque -->
+    <div id="modal-historico-graficos" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-modal-historico">
+      <div class="modal-card modal-large" style="max-width: 840px; width: 95%;">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="background: rgba(16, 185, 129, 0.15); color: #10b981; width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+              📊
+            </div>
+            <div>
+              <h3 id="title-modal-historico" style="margin: 0; font-size: 1.15rem; color: var(--text-primary);">Histórico & Gráfico de Retirada</h3>
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">
+                <span id="history-modal-bloco-id" style="font-weight: 600; color: var(--text-primary);">Bancada B-01</span>
+                <span>•</span>
+                <span id="history-modal-cultura">Alface Crespa</span>
+                <span>•</span>
+                <span id="history-modal-ciclo-status" class="badge-status-chip">Ciclo Ativo</span>
+              </div>
+            </div>
+          </div>
+          <button class="modal-close-btn" data-close="modal-historico-graficos">✕</button>
+        </div>
+
+        <div class="modal-body" style="padding: 16px 20px; max-height: 75vh; overflow-y: auto;">
+          <!-- 1. Grid de Métricas de Estoque da Bancada -->
+          <div class="history-metrics-grid">
+            <div class="history-metric-box">
+              <span class="history-metric-label">Plantio Inicial</span>
+              <strong id="history-metric-inicial" class="history-metric-val">192</strong>
+              <small id="history-metric-data-plantio" class="history-metric-sub">Plantado em -</small>
+            </div>
+            <div class="history-metric-box">
+              <span class="history-metric-label">Total Colhido / Retirado</span>
+              <strong id="history-metric-colhido" class="history-metric-val" style="color: #f59e0b;">0</strong>
+              <small id="history-metric-taxa-colheita" class="history-metric-sub">0% do lote</small>
+            </div>
+            <div class="history-metric-box highlight">
+              <span class="history-metric-label">Estoque Atual Disponível</span>
+              <strong id="history-metric-restante" class="history-metric-val" style="color: #10b981;">192</strong>
+              <small id="history-metric-pct-restante" class="history-metric-sub">100% na bancada</small>
+            </div>
+            <div class="history-metric-box">
+              <span class="history-metric-label">Total de Manejos</span>
+              <strong id="history-metric-total-tratos" class="history-metric-val" style="color: #3b82f6;">0</strong>
+              <small class="history-metric-sub">Intervenções registradas</small>
+            </div>
+          </div>
+
+          <!-- 2. Gráfico Interativo de Retiradas e Evolução do Estoque -->
+          <div class="history-chart-card">
+            <div class="history-chart-header">
+              <div>
+                <strong style="font-size: 0.95rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                  <span>📈</span>
+                  <span>Evolução do Estoque & Retiradas de Plantas</span>
+                </strong>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                  Linha temporal da quantidade de plantas na bancada e volumes retirados a cada colheita
+                </div>
+              </div>
+              <div class="chart-legend-row">
+                <span class="chart-legend-item"><span class="dot-legend dot-stock"></span> Estoque Restante</span>
+                <span class="chart-legend-item"><span class="dot-legend dot-harvest"></span> Colheita / Retirada</span>
+              </div>
+            </div>
+            <div class="chart-canvas-container" style="position: relative; width: 100%; height: 210px; margin-top: 10px;">
+              <canvas id="canvas-history-chart" style="width: 100%; height: 100%; display: block;"></canvas>
+            </div>
+          </div>
+
+          <!-- 3. Tabela / Linha do Tempo Completa de Manejos -->
+          <div class="history-timeline-section" style="margin-top: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+              <strong style="font-size: 0.92rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                <span>🕒</span>
+                <span>Registro Cronológico de Manejos & Colheitas</span>
+              </strong>
+              <div class="history-filter-pills" id="history-filter-pills">
+                <button type="button" class="history-filter-pill active" data-filter="ALL">Todos</button>
+                <button type="button" class="history-filter-pill" data-filter="COLHEITA">🌾 Apenas Colheitas</button>
+                <button type="button" class="history-filter-pill" data-filter="MANEJO">🌿 Nutrição & Manejo</button>
+              </div>
+            </div>
+
+            <div id="history-timeline-container" class="history-timeline-list">
+              <!-- Renderizado dinamicamente via JS -->
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="justify-content: space-between;">
+          <div style="font-size: 0.8rem; color: var(--text-muted);">
+            Registros salvos localmente e integrados com a nuvem
+          </div>
+          <button type="button" class="btn-secondary" data-close="modal-historico-graficos">Fechar Histórico</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal 9: Editar Cultivo da Bancada em Andamento -->
+    <div id="modal-editar-ciclo" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-modal-editar-ciclo">
+      <div class="modal-card" style="max-width: 520px;">
+        <div class="modal-header">
+          <h3 id="title-modal-editar-ciclo" style="display: flex; align-items: center; gap: 8px; color: var(--primary);">
+            <span>✏️</span>
+            <span>Editar Cultivo da Bancada</span>
+          </h3>
+          <button class="modal-close-btn" data-close="modal-editar-ciclo">✕</button>
+        </div>
+        <form id="form-editar-ciclo">
+          <div class="modal-body">
+            <input type="hidden" id="edit-ciclo-id">
+            <input type="hidden" id="edit-ciclo-bloco-id">
+
+            <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); padding: 10px 14px; border-radius: 8px; margin-bottom: 4px;">
+              <span style="font-size: 0.85rem; color: var(--text-secondary);">Bancada: <strong id="edit-ciclo-bloco-label" style="color: var(--text-primary); font-size: 0.95rem;">B-01</strong></span>
+            </div>
+
+            <!-- Seleção a partir do Catálogo -->
+            <div class="form-group" style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); padding: 10px 14px; border-radius: 8px;">
+              <label for="edit-ciclo-cultura-select" style="font-weight: 600; color: var(--text-primary); font-size: 0.8rem; margin-bottom: 4px;">🌿 Selecionar Cultura Cadastrada:</label>
+              <select id="edit-ciclo-cultura-select" class="form-control" style="font-weight: 600;">
+                <!-- Populado dinamicamente via JS -->
+              </select>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="edit-ciclo-cultura">Nome da Cultura:</label>
+                <input type="text" id="edit-ciclo-cultura" class="form-control" required placeholder="Ex: Alface Crespa, Rúcula">
+              </div>
+              <div class="form-group">
+                <label for="edit-ciclo-variedade">Variedade (Opcional):</label>
+                <input type="text" id="edit-ciclo-variedade" class="form-control" placeholder="Ex: Grand Rapids">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="edit-ciclo-data-plantio">Data do Plantio:</label>
+                <input type="date" id="edit-ciclo-data-plantio" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="edit-ciclo-data-colheita">Previsão de Colheita:</label>
+                <input type="date" id="edit-ciclo-data-colheita" class="form-control" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="edit-ciclo-qtd-inicial">Qtd. Inicial (Plantas):</label>
+                <input type="number" id="edit-ciclo-qtd-inicial" class="form-control" min="1" required>
+              </div>
+              <div class="form-group">
+                <label for="edit-ciclo-lote-nutritivo">Lote / Solução Nutritiva:</label>
+                <input type="text" id="edit-ciclo-lote-nutritivo" class="form-control" placeholder="Ex: Nutri-Standard A+B">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" data-close="modal-editar-ciclo">Cancelar</button>
+            <button type="submit" class="btn-primary">Salvar Alterações</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 10: Catálogo e Cadastro de Culturas -->
+    <div id="modal-culturas-catalogo" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-modal-culturas">
+      <div class="modal-card modal-large" style="max-width: 600px; width: 95%;">
+        <div class="modal-header">
+          <h3 id="title-modal-culturas" style="display: flex; align-items: center; gap: 8px;">
+            <span>🌿</span>
+            <span>Catálogo de Culturas</span>
+          </h3>
+          <button class="modal-close-btn" data-close="modal-culturas-catalogo">✕</button>
+        </div>
+        <div class="modal-body" style="max-height: 78vh; overflow-y: auto; padding: 18px 20px;">
+
+          <!-- Seção: Cadastrar nova cultura -->
+          <div class="catalogo-form-card">
+            <p class="catalogo-form-title">➕ Nova Cultura</p>
+            <div class="form-group" style="margin-bottom: 10px;">
+              <label for="cad-cultura-nome">Nome da Cultura <span style="color:#ef4444; font-size:0.8rem;">*</span></label>
+              <input type="text" id="cad-cultura-nome" class="form-control"
+                placeholder="Ex: Alface Crespa, Rúcula, Agrião" autocomplete="off">
+            </div>
+            <div class="form-row" style="margin-bottom: 12px;">
+              <div class="form-group">
+                <label for="cad-cultura-variedade">Variedade <span style="font-size:0.72rem; color:var(--text-muted);">(opcional)</span></label>
+                <input type="text" id="cad-cultura-variedade" class="form-control"
+                  placeholder="Ex: Grand Rapids, Verônica" autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label for="cad-cultura-dias">Ciclo médio <span style="font-size:0.72rem; color:var(--text-muted);">(dias)</span></label>
+                <input type="number" id="cad-cultura-dias" class="form-control"
+                  min="5" max="365" value="35" placeholder="Ex: 35">
+              </div>
+            </div>
+            <button type="button" id="btn-cadastrar-cultura" class="btn-primary" style="width: 100%; justify-content: center;">
+              ✓ Adicionar ao Catálogo
+            </button>
+          </div>
+
+
+          <!-- Tabela de culturas cadastradas -->
+          <div style="margin-top: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <strong style="font-size: 0.88rem; color: var(--text-secondary);">Culturas Cadastradas para Plantio:</strong>
+              <small id="catalogo-count" style="color: var(--text-muted); font-size: 0.78rem;">0 culturas</small>
+            </div>
+            <div id="tabela-culturas-container" style="display: flex; flex-direction: column; gap: 6px;">
+              <!-- Itens injetados via JS -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" data-close="modal-culturas-catalogo">Fechar Catálogo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal 11: Login / Autenticação de Usuário -->
+    <div id="modal-login" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-modal-login">
+      <div class="modal-card" style="max-width: 440px;">
+        <div class="modal-header">
+          <h3 id="title-modal-login" style="display: flex; align-items: center; gap: 8px;">
+            <span>🔐</span>
+            <span>Acesso ao Sistema</span>
+          </h3>
+          <button class="modal-close-btn" data-close="modal-login">✕</button>
+        </div>
+        <form id="form-login">
+          <div class="modal-body" style="padding: 20px;">
+            <p style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;">
+              Entre com sua conta de <strong>Gestor</strong> ou <strong>Operador</strong> para liberar o registro de colheitas, manejos e plantios.
+            </p>
+
+            <!-- Abas Rápidas de Tipo de Usuário -->
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+              <button type="button" id="tab-login-operador" class="btn-primary" style="flex: 1; justify-content: center; font-size: 0.85rem; padding: 8px;">
+                👨‍🌾 Operador
+              </button>
+              <button type="button" id="tab-login-gestor" class="btn-secondary" style="flex: 1; justify-content: center; font-size: 0.85rem; padding: 8px;">
+                👑 Gestor
+              </button>
+            </div>
+
+            <!-- Campo Operador (selecionar da lista) -->
+            <div id="group-login-operador" class="form-group" style="margin-bottom: 14px;">
+              <label for="login-operador-select">Selecione seu Nome de Operador:</label>
+              <select id="login-operador-select" class="form-control" style="font-weight: 600;">
+                <option value="">-- Escolha seu nome --</option>
+              </select>
+              <small id="login-sem-operadores-aviso" style="display: none; color: #f59e0b; font-size: 0.75rem; margin-top: 4px;">
+                Nenhum operador cadastrado no momento. O Gestor precisa cadastrá-los primeiro.
+              </small>
+            </div>
+
+            <!-- Senha -->
+            <div class="form-group" style="margin-bottom: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label for="login-senha" style="margin: 0;">Senha (mínimo 4 caracteres):</label>
+                <button type="button" id="btn-toggle-login-pass" style="background: transparent; border: none; color: var(--text-muted); font-size: 0.75rem; cursor: pointer;">
+                  👁️ Mostrar
+                </button>
+              </div>
+              <input type="password" id="login-senha" class="form-control" placeholder="Mínimo 4 caracteres alfanuméricos" required autocomplete="current-password">
+            </div>
+
+            <!-- Link de Recuperação de Senha do Gestor -->
+            <div id="box-recuperar-senha" style="display: none; margin-top: 8px; margin-bottom: 8px; text-align: right;">
+              <button type="button" id="btn-esqueci-senha" style="background: transparent; border: none; color: #10b981; font-size: 0.75rem; cursor: pointer; text-decoration: underline;">
+                Esqueci minha senha de Gestor
+              </button>
+            </div>
+
+            <!-- Link de Ajuda/Recuperação de Senha do Operador -->
+            <div id="box-recuperar-operador" style="display: block; margin-top: 8px; margin-bottom: 8px; text-align: right;">
+              <button type="button" id="btn-esqueci-operador" style="background: transparent; border: none; color: var(--accent-blue); font-size: 0.75rem; cursor: pointer; text-decoration: underline;">
+                ❓ Esqueci minha senha ou preciso de acesso
+              </button>
+            </div>
+            
+            <div id="info-recuperacao-msg" style="display: none; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 12px; font-size: 0.78rem; color: var(--text-secondary); margin-top: 8px;">
+            </div>
+
+            <div id="info-operador-msg" style="display: none; background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 8px; padding: 12px; font-size: 0.78rem; color: var(--text-secondary); margin-top: 8px;">
+            </div>
+          </div>
+          <div class="modal-footer" style="flex-direction: column; gap: 8px;">
+            <button type="submit" id="btn-confirm-login" class="btn-primary" style="width: 100%; justify-content: center; padding: 10px;">
+              Entrar no Sistema
+            </button>
+            <button type="button" class="btn-secondary" data-close="modal-login" style="width: 100%; justify-content: center; font-size: 0.8rem;">
+              Continuar como Visualizador (Somente Leitura)
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 12: Gerenciamento de Usuários e Segurança (Exclusivo Gestor) -->
+    <div id="modal-usuarios-gestor" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-modal-usuarios">
+      <div class="modal-card modal-large" style="max-width: 680px; width: 95%;">
+        <div class="modal-header">
+          <h3 id="title-modal-usuarios" style="display: flex; align-items: center; gap: 8px;">
+            <span>👑</span>
+            <span>Painel do Gestor: Usuários & Segurança</span>
+          </h3>
+          <button class="modal-close-btn" data-close="modal-usuarios-gestor">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 18px 22px; max-height: 78vh; overflow-y: auto;">
+
+          <!-- Navegação por Abas Internas -->
+          <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px; margin-bottom: 16px;">
+            <button type="button" id="tab-nav-operadores" class="btn-primary" style="font-size: 0.85rem; padding: 6px 14px;">
+              👨‍🌾 Operadores
+            </button>
+            <button type="button" id="tab-nav-seguranca" class="btn-secondary" style="font-size: 0.85rem; padding: 6px 14px;">
+              🔒 Segurança & Criptografia da Planilha
+            </button>
+          </div>
+
+          <!-- SEÇÃO 1: OPERADORES -->
+          <div id="sec-gestor-operadores">
+            <!-- Card de Novo Operador -->
+            <div class="catalogo-form-card" style="margin-bottom: 16px;">
+              <p class="catalogo-form-title">➕ Cadastrar Novo Operador</p>
+              <div class="form-row" style="margin-bottom: 10px;">
+                <div class="form-group" style="flex: 2;">
+                  <label for="cad-operador-nome">Nome do Operador <span style="color:#ef4444;">*</span></label>
+                  <input type="text" id="cad-operador-nome" class="form-control" placeholder="Ex: Carlos Silva, Mariana" autocomplete="off">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                  <label for="cad-operador-senha">Senha Alfanumérica <span style="color:#ef4444;">*</span></label>
+                  <input type="text" id="cad-operador-senha" class="form-control" placeholder="Mín. 4 carac. (letras/números)" autocomplete="off">
+                  <small style="font-size: 0.7rem; color: var(--text-muted);">Mínimo 4 caracteres</small>
+                </div>
+              </div>
+              <button type="button" id="btn-salvar-operador" class="btn-primary" style="width: 100%; justify-content: center;">
+                ✓ Cadastrar Operador
+              </button>
+            </div>
+
+            <!-- Lista de Operadores Cadastrados -->
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <strong style="font-size: 0.88rem; color: var(--text-secondary);">Operadores Ativos:</strong>
+                <small id="operadores-count" style="color: var(--text-muted); font-size: 0.78rem;">0 cadastrados</small>
+              </div>
+              <div id="lista-operadores-container" style="display: flex; flex-direction: column; gap: 8px;">
+                <!-- Populado dinamicamente via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- SEÇÃO 2: SEGURANÇA DO GESTOR & CRIPTOGRAFIA -->
+          <div id="sec-gestor-seguranca" style="display: none;">
+            <div class="catalogo-form-card">
+              <p class="catalogo-form-title">🛡️ Configurações de Segurança do Gestor</p>
+
+              <!-- Status da Conexão com a Planilha -->
+              <div id="gestor-sheets-status-card" style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem;">
+                  <span id="gestor-sheets-status-dot" class="status-dot"></span>
+                  <span id="gestor-sheets-status-text" style="color: var(--text-secondary);">Google Sheets: Verificando...</span>
+                </div>
+                <button type="button" id="btn-sync-usuarios-sheets" class="btn-secondary" style="font-size: 0.74rem; padding: 4px 10px;">
+                  ☁️ Sincronizar Agora
+                </button>
+              </div>
+
+              <!-- Cartão de Senha Atual -->
+              <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <small style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block;">Senha Atual do Gestor:</small>
+                  <span id="gestor-senha-atual-display" style="font-family: monospace; font-size: 1rem; font-weight: 700; color: #10b981; letter-spacing: 2px;">••••••••</span>
+                </div>
+                <button type="button" id="btn-toggle-ver-senha-gestor" style="background: transparent; border: 1px solid var(--border-subtle); color: var(--text-secondary); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer;">
+                  👁️ Revelar
+                </button>
+              </div>
+              
+              <div class="form-group" style="margin-bottom: 14px;">
+                <label for="gestor-email-recup" style="font-weight: 600;">E-mail de Recuperação de Senha:</label>
+                <input type="email" id="gestor-email-recup" class="form-control" placeholder="seu-email@dominio.com">
+                <small style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-top: 3px;">
+                  Exibido caso esqueça sua senha ao clicar em "Esqueci minha senha de Gestor".
+                </small>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label for="gestor-chave-cripto" style="margin: 0; font-weight: 600;">Código Secreto de Criptografia da Planilha:</label>
+                  <span style="font-size: 0.72rem; color: #10b981; font-weight: 600;">✓ Pode ser alterado quando desejar</span>
+                </div>
+                <input type="text" id="gestor-chave-cripto" class="form-control" placeholder="Ex: ESTUFA-CHAVE-2026" style="font-family: monospace; font-weight: 700; letter-spacing: 1px;">
+                <small style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-top: 4px; line-height: 1.4;">
+                  🔑 <strong>Como funciona a alteração:</strong> Ao alterar este código, o sistema re-codifica todas as senhas dos operadores e do gestor automaticamente e atualiza a coluna <code>dados_codificados</code> na aba <code>Usuarios</code> da planilha Google.
+                </small>
+              </div>
+
+              <div class="form-row" style="margin-bottom: 14px;">
+                <div class="form-group">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <label for="gestor-nova-senha" style="margin: 0;">Nova Senha do Gestor (opcional):</label>
+                    <button type="button" id="btn-toggle-nova-senha-gestor" style="background: transparent; border: none; color: var(--text-muted); font-size: 0.72rem; cursor: pointer;">👁️</button>
+                  </div>
+                  <input type="password" id="gestor-nova-senha" class="form-control" placeholder="Mín. 4 caracteres">
+                  <small style="font-size: 0.7rem; color: var(--text-muted);">Deixe vazio se não quiser trocar</small>
+                </div>
+                <div class="form-group">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <label for="gestor-confirm-senha" style="margin: 0;">Confirmar Nova Senha:</label>
+                    <button type="button" id="btn-toggle-conf-senha-gestor" style="background: transparent; border: none; color: var(--text-muted); font-size: 0.72rem; cursor: pointer;">👁️</button>
+                  </div>
+                  <input type="password" id="gestor-confirm-senha" class="form-control" placeholder="Repita a nova senha">
+                  <small style="font-size: 0.7rem; color: var(--text-muted);">Repita a nova senha digitada</small>
+                </div>
+              </div>
+
+              <button type="button" id="btn-salvar-seguranca-gestor" class="btn-primary" style="width: 100%; justify-content: center; padding: 11px; font-weight: 600;">
+                ✓ Salvar Configurações de Segurança
+              </button>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" data-close="modal-usuarios-gestor">Fechar Painel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal 13: Configuração Inicial do Gestor (Primeiro Acesso) -->
+    <div id="modal-setup-gestor" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-setup-gestor">
+      <div class="modal-card" style="max-width: 480px;">
+        <div class="modal-header">
+          <h3 id="title-setup-gestor" style="display: flex; align-items: center; gap: 8px;">
+            <span>👑</span>
+            <span>Configuração Inicial do Gestor</span>
+          </h3>
+        </div>
+        <form id="form-setup-gestor">
+          <div class="modal-body" style="padding: 20px;">
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;">
+              Bem-vindo ao <strong>HidroManager</strong>! Crie a conta do <strong>Gestor Principal</strong> para administrar a equipe de colheita e dados da estufa.
+            </p>
+
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label for="setup-gestor-nome">Nome do Gestor <span style="color:#ef4444;">*</span></label>
+              <input type="text" id="setup-gestor-nome" class="form-control" placeholder="Ex: Roberto Gestor" required value="Gestor">
+            </div>
+
+            <div class="form-row" style="margin-bottom: 12px;">
+              <div class="form-group">
+                <label for="setup-gestor-senha">Senha do Gestor <span style="color:#ef4444;">*</span></label>
+                <input type="password" id="setup-gestor-senha" class="form-control" placeholder="Mín. 4 alfanuméricos" required>
+                <small style="font-size: 0.7rem; color: var(--text-muted);">Mínimo 4 caracteres (letras/números)</small>
+              </div>
+              <div class="form-group">
+                <label for="setup-gestor-confirm-senha">Confirmar Senha <span style="color:#ef4444;">*</span></label>
+                <input type="password" id="setup-gestor-confirm-senha" class="form-control" placeholder="Repita a senha" required>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label for="setup-gestor-email">E-mail de Recuperação <span style="color:#ef4444;">*</span></label>
+              <input type="email" id="setup-gestor-email" class="form-control" placeholder="seu-email@dominio.com" required>
+              <small style="font-size: 0.72rem; color: var(--text-muted);">Para exibir caso esqueça sua senha de gestor.</small>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label for="setup-gestor-chave">Código de Criptografia da Planilha <span style="color:#ef4444;">*</span></label>
+              <input type="text" id="setup-gestor-chave" class="form-control" placeholder="Ex: HIDRO-CHAVE-2026" required value="HIDRO-SEC-2026" style="font-family: monospace; font-weight: 700;">
+              <small style="font-size: 0.72rem; color: var(--text-muted);">
+                Chave secreta que codifica os dados dos operadores na planilha Google.
+              </small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; padding: 11px;">
+              ✓ Salvar Conta e Iniciar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Container Flutuante para Toasts -->
+    <div id="toast-container" aria-live="polite"></div>
+
+  </div>
+
+  <script src="app.js?v=4.9"></script>
+</body>
+</html>
