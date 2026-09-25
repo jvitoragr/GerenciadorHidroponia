@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>HidroManager - Sistema de Gestão Hidropônica</title>
   <meta name="description" content="Sistema web profissional para gestão e croqui interativo de estufas hidropônicas NFT com integração Google Sheets.">
-  <link rel="stylesheet" href="style.css?v=4.9">
+  <link rel="stylesheet" href="style.css?v=5.7">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2310b981'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z'/></svg>">
 </head>
 <body>
@@ -23,19 +23,12 @@
           </svg>
         </div>
         <div class="brand-info">
-          <h1>HidroManager <span class="brand-badge">Bancadas NFT</span></h1>
+          <h1>HidroManager</h1>
         </div>
       </div>
 
       <!-- Ações da Toolbar Limpa e Otimizada -->
       <nav class="toolbar-actions" aria-label="Ferramentas do Croqui">
-        <button id="tool-select" class="tool-btn active" title="Modo Padrão: Selecionar e Inspecionar Bancadas">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path>
-          </svg>
-          <span>Inspecionar</span>
-        </button>
-
         <!-- Menu Dropdown de Bancadas (Unificado com Espelhar Lado) -->
         <div class="dropdown-container" id="dropdown-bancadas">
           <button type="button" id="btn-menu-bancadas" class="btn-primary" title="Gerenciar e Inserir Bancadas no Croqui">
@@ -68,6 +61,13 @@
                 <small>Intermediário (6m x 1.2m, 10 perfis)</small>
               </div>
             </button>
+            <button type="button" class="dropdown-item" id="opt-add-germinacao">
+              <span class="dropdown-item-icon">🧫</span>
+              <div class="dropdown-item-info">
+                <strong>+ Módulo Germinação</strong>
+                <small>Espuma fenólica (1.0m x 1.0m, sem calhas)</small>
+              </div>
+            </button>
             <div class="dropdown-divider"></div>
             <button type="button" class="dropdown-item" id="opt-espelhar-lado">
               <span class="dropdown-item-icon">🔄</span>
@@ -87,45 +87,27 @@
           </div>
         </div>
 
-        <button id="btn-config-area" class="tool-btn" title="Configurar dimensões da estufa">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-          </svg>
-          <span>Área (Estufa)</span>
+        <!-- Botão Estufa: Manejos Gerais da Casa de Vegetação & Tanque Central -->
+        <button type="button" id="btn-manejos-estufa" class="tool-btn" title="Manejos Gerais da Estufa e Tanque Central de Solução">
+          <span style="font-size: 1rem;">🏠</span>
+          <span>Estufa</span>
         </button>
 
+        <!-- Botão Culturas -->
         <button type="button" id="btn-catalogo-culturas" class="tool-btn" onclick="abrirModalCatalogoCulturas()" title="Gerenciar e cadastrar culturas e variedades pré-cadastradas">
           <span style="font-size: 0.95rem;">🌿</span>
           <span>Culturas</span>
         </button>
 
-        <!-- Botão Direto: Salvar Projeto (.json) -->
-        <button type="button" id="btn-save-project" class="btn-primary" title="Salva no navegador e baixa o arquivo JSON completo de projeto" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-            <polyline points="17 21 17 13 7 13 7 21"></polyline>
-            <polyline points="7 3 7 8 15 8"></polyline>
-          </svg>
-          <span>Salvar Projeto (.json)</span>
-        </button>
-
-        <!-- Botão Direto: Abrir Projeto (.json) -->
-        <button type="button" id="btn-open-project" class="tool-btn" title="Carregar / Restaurar projeto de arquivo JSON do computador">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-          </svg>
-          <span>Abrir Projeto</span>
-        </button>
-
-        <!-- Menu Dropdown de Mais Opções (Local / Sheets) -->
-        <div class="dropdown-container" id="dropdown-salvar">
-          <button type="button" id="btn-save-menu" class="tool-btn dropdown-toggle" title="Outras opções de salvamento e Google Sheets">
-            <span>Opções</span>
-            <span class="dropdown-arrow">▼</span>
+        <!-- Menu Dropdown Projeto (Unificado: Salvar, Backup JSON, Sheets, Dimensões e Tema) -->
+        <div class="dropdown-container" id="dropdown-projeto">
+          <button type="button" id="btn-menu-projeto" class="tool-btn dropdown-toggle" title="Opções do projeto, arquivos de backup e configurações">
+            <span style="font-size: 0.95rem;">📁</span>
+            <span>Projeto</span>
+            <span class="dropdown-arrow" style="font-size: 0.68rem; margin-left: 3px;">▼</span>
           </button>
 
-          <div class="dropdown-menu align-right" id="menu-save-options">
+          <div class="dropdown-menu align-right" id="menu-projeto-options" style="min-width: 250px;">
             <button type="button" class="dropdown-item" id="opt-save-local">
               <span class="dropdown-item-icon">💾</span>
               <div class="dropdown-item-info">
@@ -136,47 +118,59 @@
             <button type="button" class="dropdown-item" id="opt-export-json">
               <span class="dropdown-item-icon">📥</span>
               <div class="dropdown-item-info">
-                <strong>Baixar Arquivo JSON (Backup)</strong>
+                <strong>Baixar Backup (.json)</strong>
                 <small>Exportar croqui para o computador</small>
               </div>
             </button>
             <button type="button" class="dropdown-item" id="opt-import-json">
               <span class="dropdown-item-icon">📤</span>
               <div class="dropdown-item-info">
-                <strong>Carregar / Importar JSON</strong>
+                <strong>Abrir / Importar (.json)</strong>
                 <small>Restaurar croqui de um arquivo</small>
               </div>
             </button>
             <div class="dropdown-divider"></div>
             <button type="button" class="dropdown-item" id="opt-open-sheets-config">
               <span class="dropdown-item-icon">☁️</span>
+              <div class="dropdown-item-info" style="width: 100%;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <strong>Conectar Google Sheets</strong>
+                  <span id="sync-dot" class="status-dot offline" style="margin-left: 6px;"></span>
+                </div>
+                <small id="sync-label">Configurar Apps Script</small>
+              </div>
+            </button>
+            <button type="button" class="dropdown-item" id="opt-config-area">
+              <span class="dropdown-item-icon">📏</span>
               <div class="dropdown-item-info">
-                <strong>Conectar Google Sheets</strong>
-                <small>Configurar Web App Google Apps Script</small>
+                <strong>Dimensões da Estufa</strong>
+                <small>Comprimento, largura e corredores</small>
+              </div>
+            </button>
+            <button type="button" class="dropdown-item" id="opt-tanques-config">
+              <span class="dropdown-item-icon">🚰</span>
+              <div class="dropdown-item-info">
+                <strong>Tanques & Solução Nutritiva</strong>
+                <small>Reservatórios, volumes e circuitos</small>
+              </div>
+            </button>
+            <div class="dropdown-divider"></div>
+            <button type="button" class="dropdown-item" id="opt-theme-toggle">
+              <span class="dropdown-item-icon" id="theme-icon">🌙</span>
+              <div class="dropdown-item-info">
+                <strong>Alternar Tema</strong>
+                <small>Modo <span id="theme-label">Escuro</span></small>
               </div>
             </button>
           </div>
         </div>
 
-        <button id="btn-theme-toggle" class="tool-btn" title="Alternar Modo Claro / Escuro">
-          <span id="theme-icon">🌙</span>
-          <span id="theme-label">Escuro</span>
-        </button>
-
-        <div id="btn-sheets-sync" class="sync-status" title="Status de Sincronização Google Sheets">
-          <span id="sync-dot" class="status-dot"></span>
-          <span id="sync-label">Google Sheets</span>
-        </div>
-
-        <!-- Widget de Usuário / Autenticação -->
+        <!-- Widget Discreto de Usuário / Sessão -->
         <div class="user-session-widget dropdown-container" id="user-session-widget">
-          <button type="button" id="btn-user-auth" class="user-pill-btn visitor" title="Gerenciar sessão de usuário">
-            <span id="user-badge-icon" class="user-badge-icon">👁️</span>
-            <div class="user-badge-details">
-              <strong id="user-display-name">Visitante</strong>
-              <small id="user-display-role">Somente Leitura</small>
-            </div>
-            <span id="user-badge-action-tag" class="user-action-tag">Entrar</span>
+          <button type="button" id="btn-user-auth" class="user-pill-btn visitor" title="Sessão de usuário">
+            <span id="user-badge-icon" class="user-badge-icon">🔑</span>
+            <span id="user-display-name" class="user-pill-name">Entrar</span>
+            <span class="user-pill-chevron" id="user-pill-chevron" style="display: none; font-size: 0.65rem; margin-left: 2px;">▼</span>
           </button>
 
           <div id="user-dropdown-menu" class="dropdown-menu align-right" style="min-width: 220px;">
@@ -332,6 +326,11 @@
             <span>•</span>
             <span id="inspector-furos-tag">Furo: 50mm (25cm)</span>
           </div>
+          <div style="margin-top: 5px; font-size: 0.76rem; color: var(--text-secondary); display: flex; align-items: center; gap: 5px;">
+            <span>🚰</span>
+            <span>Circuito:</span>
+            <strong id="inspector-tanque-label" style="color: #10b981;">Tanque Setor Esquerdo (5.000 L)</strong>
+          </div>
         </div>
         <button id="btn-close-inspector" class="modal-close-btn" title="Fechar Painel">✕</button>
       </div>
@@ -476,14 +475,16 @@
         </div>
         <form id="form-trato">
           <div class="modal-body">
+            <!-- Aviso de contexto da bancada -->
+            <div id="trato-contexto-aviso" style="padding: 10px 12px; border-radius: 8px; font-size: 0.78rem; line-height: 1.4; margin-bottom: 12px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); color: var(--text-secondary);">
+              <span id="trato-bloco-id-badge" style="font-weight: 700; color: #3b82f6;">Bancada</span>: 
+              <span id="trato-contexto-msg">Manejo específico da bancada.</span>
+            </div>
+
             <div class="form-group">
-              <label>Seleção Rápida de Manejo:</label>
+              <label style="font-weight: 600;">Seleção Rápida de Manejo:</label>
               <div class="trato-quick-tags" id="trato-tags-container">
-                <button type="button" class="trato-tag-btn active" data-value="Limpeza de canaleta">Limpeza de canaleta</button>
-                <button type="button" class="trato-tag-btn" data-value="Adição de nutrientes">Adição de nutrientes</button>
-                <button type="button" class="trato-tag-btn" data-value="Correção de pH">Correção de pH</button>
-                <button type="button" class="trato-tag-btn" data-value="Controle sanitário">Controle sanitário</button>
-                <button type="button" class="trato-tag-btn" data-value="Manutenção hidráulica">Manutenção hidráulica</button>
+                <!-- Populado dinamicamente no JS conforme o tipo da bancada (Maternidade vs Definitiva) -->
               </div>
               <input type="hidden" id="trato-tipo-input" name="tipo_manejo" value="Limpeza de canaleta" required>
             </div>
@@ -663,6 +664,7 @@
                   <option value="definitivo">Definitivo (Engorda)</option>
                   <option value="maternidade">Maternidade (Alta densidade)</option>
                   <option value="bercario">Berçário (Intermediário)</option>
+                  <option value="germinacao">🧫 Germinação (Espuma Fenólica)</option>
                   <option value="personalizado">Personalizado</option>
                 </select>
               </div>
@@ -675,58 +677,85 @@
               </div>
             </div>
 
-            <div class="form-row" id="row-pos-bloco">
-              <div class="form-group">
-                <label for="config-pos-x">Posição X (m):</label>
-                <input type="number" step="0.1" min="0" max="100" id="config-pos-x" class="form-control" value="0.5">
-              </div>
-              <div class="form-group">
-                <label for="config-pos-y">Posição Y (m):</label>
-                <input type="number" step="0.1" min="0" max="200" id="config-pos-y" class="form-control" value="2.0">
-              </div>
-            </div>
-
             <div class="form-row">
               <div class="form-group">
-                <label for="config-comprimento">Comprimento dos Perfis (m):</label>
-                <input type="number" step="0.1" min="1" max="50" id="config-comprimento" class="form-control" required value="6.0">
+                <label for="config-comprimento" id="label-config-comprimento">Comprimento dos Perfis (m):</label>
+                <input type="number" step="0.1" min="0.3" max="50" id="config-comprimento" class="form-control" required value="6.0">
               </div>
               <div class="form-group">
-                <label for="config-largura">Largura da Bancada (m):</label>
-                <input type="number" step="0.05" min="0.5" max="5" id="config-largura" class="form-control" required value="1.5">
+                <label for="config-largura" id="label-config-largura">Largura da Bancada (m):</label>
+                <input type="number" step="0.05" min="0.3" max="10" id="config-largura" class="form-control" required value="1.5">
               </div>
             </div>
 
-            <div class="form-row">
-              <div class="form-group">
-                <label for="config-qtd-perfis">Quantidade de Perfis (Canais):</label>
-                <input type="number" min="2" max="30" id="config-qtd-perfis" class="form-control" required value="8">
+            <!-- SEÇÃO EXCLUSIVA PARA GERMINAÇÃO EM ESPUMA FENÓLICA -->
+            <div id="secao-germinacao-espuma" style="display: none; background: rgba(16, 185, 129, 0.06); border: 1px dashed rgba(16, 185, 129, 0.4); padding: 12px 14px; border-radius: 8px; margin-bottom: 12px;">
+              <div style="font-size: 0.82rem; font-weight: 700; color: #10b981; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                <span>🧫</span>
+                <span>Parâmetros de Semeadura em Espuma Fenólica</span>
               </div>
-              <div class="form-group">
-                <label for="config-espaco-perfis">Espaçamento Perfis (cm):</label>
-                <input type="text" id="config-espaco-perfis" class="form-control" value="18.5 cm" readonly style="opacity: 0.85;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="config-qtd-placas">Quantidade de Placas de Espuma:</label>
+                  <input type="number" min="1" max="100" id="config-qtd-placas" class="form-control" value="2">
+                  <small style="font-size: 0.72rem; color: var(--text-muted);">Número de placas na mesa (ex: 2 placas)</small>
+                </div>
+                <div class="form-group">
+                  <label for="config-celulas-placa">Células / Furos por Placa:</label>
+                  <select id="config-celulas-placa" class="form-control">
+                    <option value="196">196 células (Padrão 14x14 - Alface/Rúcula)</option>
+                    <option value="100">100 células (10x10 - Espaçamento amplo)</option>
+                    <option value="300">300 células (Alta densidade - Rúcula/Agrião)</option>
+                    <option value="custom">Outro (Personalizado)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group" id="group-custom-celulas" style="display: none; margin-top: 6px;">
+                <label for="config-custom-celulas">Quantidade Personalizada de Células:</label>
+                <input type="number" min="1" max="2000" id="config-custom-celulas" class="form-control" value="196">
               </div>
             </div>
 
-            <div class="form-row form-row-3">
-              <div class="form-group">
-                <label for="config-alinhamento-furos">Alinhamento dos Furos:</label>
-                <select id="config-alinhamento-furos" class="form-control">
-                  <option value="triangular">🟢 Triangular / Quincôncio (Zigue-zague intercalado)</option>
-                  <option value="paralelo">⚪ Paralelo / Reto (Lado a lado)</option>
-                </select>
+            <!-- SEÇÃO DE PERFIS E CANALETAS (BANCADAS DEFINITIVAS, MATERNIDADE E BERÇÁRIO) -->
+            <div id="secao-perfis-canaletas">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="config-qtd-perfis">Quantidade de Perfis (Canais):</label>
+                  <input type="number" min="1" max="50" id="config-qtd-perfis" class="form-control" required value="8">
+                </div>
+                <div class="form-group">
+                  <label for="config-espaco-perfis">Espaçamento Perfis (cm):</label>
+                  <input type="text" id="config-espaco-perfis" class="form-control" value="18.5 cm" readonly style="opacity: 0.85;">
+                </div>
               </div>
-              <div class="form-group">
-                <label for="config-espaco-furos">Espaçamento Furos (cm):</label>
-                <input type="number" step="1" min="5" max="100" id="config-espaco-furos" class="form-control" required value="25">
-              </div>
-              <div class="form-group">
-                <label for="config-diametro-furo">Tamanho do Furo (mm):</label>
-                <input type="number" step="1" min="20" max="150" id="config-diametro-furo" class="form-control" required value="50" title="Diâmetro do furo na canaleta (ex: 50mm para alface, 35mm para maternidade)">
+
+              <div class="form-row form-row-3">
+                <div class="form-group">
+                  <label for="config-alinhamento-furos">Alinhamento dos Furos:</label>
+                  <select id="config-alinhamento-furos" class="form-control">
+                    <option value="triangular">🟢 Triangular / Quincôncio (Zigue-zague intercalado)</option>
+                    <option value="paralelo">⚪ Paralelo / Reto (Lado a lado)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="config-espaco-furos">Espaçamento Furos (cm):</label>
+                  <input type="number" step="0.5" min="0.5" max="100" id="config-espaco-furos" class="form-control" required value="25">
+                </div>
+                <div class="form-group">
+                  <label for="config-diametro-furo">Tamanho do Furo (mm):</label>
+                  <input type="number" step="1" min="10" max="150" id="config-diametro-furo" class="form-control" required value="50" title="Diâmetro do furo na canaleta (ex: 50mm para alface, 35mm para maternidade)">
+                </div>
               </div>
             </div>
 
-            <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="form-group" style="margin-top: 10px;">
+              <label for="config-tanque-select" style="font-weight: 600;">🚰 Tanque / Circuito de Solução Nutritiva:</label>
+              <select id="config-tanque-select" class="form-control" style="font-weight: 600;">
+                <!-- Populado dinamicamente com tanques cadastrados -->
+              </select>
+            </div>
+
+            <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
               <span style="font-size: 0.85rem; color: var(--text-secondary);">Capacidade estimada da bancada:</span>
               <strong id="config-total-furos-preview" style="font-size: 1.1rem; color: #34d399;">192 plantas</strong>
             </div>
@@ -817,21 +846,52 @@
               </div>
             </div>
 
-            <div class="form-group">
-              <label for="colheita-destino">Destino / Cliente / Observação:</label>
+            <!-- SEÇÃO DE DESTINO DO TRANSPLANTE (EXCLUSIVA PARA GERMINAÇÃO OU TRANSPLANTES) -->
+            <div id="secao-destino-transplante" style="display: none; background: rgba(16, 185, 129, 0.06); border: 1px dashed rgba(16, 185, 129, 0.45); padding: 12px 14px; border-radius: 8px; margin-bottom: 14px;">
+              <div class="form-group" style="margin-bottom: 8px;">
+                <label for="transplante-destino-bancada" style="font-size: 0.85rem; font-weight: 700; color: #10b981; display: flex; align-items: center; gap: 6px;">
+                  <span>📍</span>
+                  <span>Bancada de Destino do Transplante:</span>
+                </label>
+                <select id="transplante-destino-bancada" class="form-control" style="font-weight: 600;">
+                  <!-- Populado dinamicamente: Berçários e Maternidades, Definitivas, ou Outro -->
+                </select>
+                <small id="transplante-destino-hint" style="font-size: 0.73rem; color: var(--text-muted); display: block; margin-top: 4px;">
+                  Selecione para qual bancada (berçário, maternidade ou definitiva) as mudas serão transferidas.
+                </small>
+              </div>
+
+              <!-- Card de Início Automático de Ciclo no Destino -->
+              <div id="card-auto-iniciar-cultivo" style="display: none; background: var(--bg-surface-elevated); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 6px; padding: 10px 12px; margin-top: 10px;">
+                <label style="display: flex; align-items: flex-start; gap: 9px; cursor: pointer; font-size: 0.82rem; color: var(--text-primary); margin: 0;">
+                  <input type="checkbox" id="check-auto-iniciar-ciclo" checked style="accent-color: #10b981; width: 17px; height: 17px; margin-top: 2px;">
+                  <div>
+                    <strong id="label-auto-iniciar-titulo" style="color: #10b981; font-size: 0.85rem; display: block;">
+                      🌱 Iniciar cultivo automaticamente no destino
+                    </strong>
+                    <span id="label-auto-iniciar-sub" style="font-size: 0.74rem; color: var(--text-secondary); display: block; margin-top: 2px; line-height: 1.35;">
+                      Ativa a bancada de destino com a mesma variedade e quantidade de mudas transplantadas.
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group" id="grupo-colheita-destino">
+              <label for="colheita-destino" id="label-colheita-destino">Destino / Cliente / Observação:</label>
               <input type="text" id="colheita-destino" class="form-control" placeholder="Ex: Feira de Domingo, Mercado Central, Venda Direta" required value="Feira de Domingo">
             </div>
 
             <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 12px; margin-top: 6px;">
               <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.82rem; color: var(--text-primary); margin: 0;">
                 <input type="checkbox" id="colheita-check-finalizar" style="accent-color: #10b981; width: 16px; height: 16px;">
-                <span>Finalizar ciclo e liberar bancada após esta colheita (Bancada Vaga)</span>
+                <span id="label-check-finalizar">Finalizar ciclo e liberar bancada após esta colheita (Bancada Vaga)</span>
               </label>
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn-secondary" data-close="modal-colheita">Cancelar</button>
-            <button type="submit" class="btn-primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <button type="submit" id="btn-confirmar-colheita" class="btn-primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
               Confirmar Colheita
             </button>
           </div>
@@ -1328,11 +1388,176 @@
       </div>
     </div>
 
+    <!-- Modal 14: Manejos Gerais da Estufa & Tanque Central -->
+    <div id="modal-manejos-estufa" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-modal-estufa">
+      <div class="modal-card" style="max-width: 580px;">
+        <div class="modal-header">
+          <h3 id="title-modal-estufa" style="display: flex; align-items: center; gap: 8px;">
+            <span>🏠</span>
+            <span>Manejos da Estufa & Tanque Central</span>
+          </h3>
+          <button class="modal-close-btn" data-close="modal-manejos-estufa">✕</button>
+        </div>
+        <form id="form-manejos-estufa">
+          <div class="modal-body">
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.45;">
+              Fertilização, correções de condutividade (CE) e pH nos <strong>reservatórios de solução</strong>, ou manutenções na <strong>estrutura física da casa de vegetação</strong>.
+            </p>
+
+            <!-- Seletor do Alvo / Circuito Hidráulico -->
+            <div class="form-group" style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); padding: 10px 14px; border-radius: 8px; margin-bottom: 12px;">
+              <label for="estufa-alvo-select" style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px; display: block; font-size: 0.82rem;">
+                🎯 Alvo do Manejo (Circuito ou Estrutura):
+              </label>
+              <select id="estufa-alvo-select" class="form-control" style="font-weight: 600;">
+                <!-- Populado dinamicamente via JS -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label style="font-weight: 600;">Seleção Rápida de Manejo:</label>
+              <div class="trato-quick-tags" id="estufa-tags-container">
+                <button type="button" class="trato-tag-btn active" data-value="Correção de pH / CE" data-tipo="quimico">⚖️ Correção de pH / CE</button>
+                <button type="button" class="trato-tag-btn" data-value="Adição de Nutrientes" data-tipo="quimico">🧪 Adição de Nutrientes</button>
+                <button type="button" class="trato-tag-btn" data-value="Troca Total de Solução" data-tipo="quimico">🔄 Troca Total de Solução</button>
+                <button type="button" class="trato-tag-btn" data-value="Lavagem do Teto (Plástico)" data-tipo="estrutural">🧼 Lavagem do Teto</button>
+                <button type="button" class="trato-tag-btn" data-value="Troca/Reparo de Tela Lateral" data-tipo="estrutural">🪟 Manutenção de Tela</button>
+                <button type="button" class="trato-tag-btn" data-value="Manutenção de Motobomba/Filtros" data-tipo="estrutural">⚙️ Bomba & Filtros</button>
+                <button type="button" class="trato-tag-btn" data-value="Higienização do Corredor Central" data-tipo="estrutural">🧹 Corredor Central</button>
+              </div>
+              <input type="hidden" id="estufa-tipo-input" name="estufa_tipo_manejo" value="Correção de pH / CE" required>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="estufa-responsavel">Responsável:</label>
+                <input type="text" id="estufa-responsavel" class="form-control" placeholder="Nome do técnico / operador" required value="Operador Geral">
+              </div>
+              <div class="form-group">
+                <label for="estufa-data-hora">Data e Hora:</label>
+                <input type="datetime-local" id="estufa-data-hora" class="form-control" required>
+              </div>
+            </div>
+
+            <!-- Campos específicos de solução nutritiva (exibidos apenas em manejos químicos) -->
+            <div id="estufa-campos-quimicos" style="display: block;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="estufa-ph">pH Medido:</label>
+                  <input type="number" id="estufa-ph" class="form-control" step="0.1" min="0" max="14" placeholder="Ex: 5.8">
+                </div>
+                <div class="form-group">
+                  <label for="estufa-ec">Condutividade Elétrica (CE mS/cm):</label>
+                  <input type="number" id="estufa-ec" class="form-control" step="0.05" min="0" max="10" placeholder="Ex: 1.65">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="estufa-dosagem">Volume / Dosagem Aplicada (Opcional):</label>
+                <input type="text" id="estufa-dosagem" class="form-control" placeholder="Ex: 150ml ácido fosfórico, 1kg adubo A+B">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="estufa-obs">Detalhes e Observações:</label>
+              <textarea id="estufa-obs" class="form-control" rows="2" placeholder="Ex: Lavado o plástico do teto com esponja macia; reposto nível do reservatório central."></textarea>
+            </div>
+
+            <!-- Histórico recente de manejos da estufa -->
+            <div style="margin-top: 14px; border-top: 1px solid var(--border-subtle); padding-top: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em;">
+                  📋 Últimos Manejos da Estufa
+                </span>
+                <span id="estufa-historico-count" style="font-size: 0.75rem; color: var(--text-muted);">0 registros</span>
+              </div>
+              <div id="estufa-historico-lista" style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; font-size: 0.76rem;">
+                <!-- Populado no JS -->
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" data-close="modal-manejos-estufa">Fechar</button>
+            <button type="submit" class="btn-primary">Salvar Manejo da Estufa</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal 15: Gerenciador de Tanques & Reservatórios -->
+    <div id="modal-tanques-config" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="title-modal-tanques">
+      <div class="modal-card" style="max-width: 600px;">
+        <div class="modal-header">
+          <h3 id="title-modal-tanques" style="display: flex; align-items: center; gap: 8px;">
+            <span>🚰</span>
+            <span>Tanques & Circuitos de Solução Nutritiva</span>
+          </h3>
+          <button class="modal-close-btn" data-close="modal-tanques-config">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 18px 20px;">
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.45;">
+            Configure os reservatórios de fertirrigação da sua estufa. Cada bancada pode ser vinculada ao seu tanque correspondente para dosagem exata e histórico individual.
+          </p>
+
+          <!-- Formulário de Adicionar / Editar Tanque -->
+          <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 14px 16px; margin-bottom: 18px;">
+            <div style="font-weight: 700; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+              <span id="form-tanque-title">+ Cadastrar Novo Tanque</span>
+              <button type="button" id="btn-cancelar-edicao-tanque" style="display: none; background: transparent; border: none; color: #ef4444; font-size: 0.75rem; cursor: pointer; text-decoration: underline;">Cancelar Edição</button>
+            </div>
+            <input type="hidden" id="tanque-id-edit" value="">
+            <div class="form-row">
+              <div class="form-group" style="flex: 2;">
+                <label for="tanque-nome">Nome do Tanque / Reservatório:</label>
+                <input type="text" id="tanque-nome" class="form-control" placeholder="Ex: Tanque Setor Esquerdo" required>
+              </div>
+              <div class="form-group" style="flex: 1.2;">
+                <label for="tanque-volume">Volume Total (Litros):</label>
+                <input type="number" id="tanque-volume" class="form-control" min="50" max="100000" step="50" placeholder="Ex: 5000" required>
+              </div>
+            </div>
+            <div class="form-row" style="margin-bottom: 4px;">
+              <div class="form-group" style="flex: 1.5;">
+                <label for="tanque-setor">Setor Padrão Vinculado:</label>
+                <select id="tanque-setor" class="form-control">
+                  <option value="esquerdo">Setor Esquerdo</option>
+                  <option value="direito">Setor Direito</option>
+                  <option value="maternidade">Maternidade (Mudas)</option>
+                  <option value="geral">Geral / Estufa Toda</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex: 1; display: flex; align-items: flex-end;">
+                <button type="button" id="btn-salvar-tanque" class="btn-primary" style="width: 100%; justify-content: center; height: 38px;">
+                  ✓ Salvar Tanque
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lista de Tanques Cadastrados -->
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-primary); text-transform: uppercase;">
+                Reservatórios Cadastrados
+              </span>
+              <span id="tanques-lista-count" style="font-size: 0.75rem; color: var(--text-muted);">0 tanques</span>
+            </div>
+            <div id="tanques-lista-container" style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; padding-right: 4px;">
+              <!-- Populado dinamicamente via JS -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" data-close="modal-tanques-config">Fechar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Container Flutuante para Toasts -->
     <div id="toast-container" aria-live="polite"></div>
 
   </div>
 
-  <script src="app.js?v=4.9"></script>
+  <script src="app.js?v=5.7"></script>
 </body>
 </html>

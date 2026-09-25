@@ -1,12 +1,5 @@
 # HidroManager 🌱 - Sistema de Gestão Hidropônica NFT
 
-![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
-![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
-![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
-![Google Sheets](https://img.shields.io/badge/Google_Sheets-34A853?style=for-the-badge&logo=google-sheets&logoColor=white)
-![Google Apps Script](https://img.shields.io/badge/Google_Apps_Script-4285F4?style=for-the-badge&logo=google&logoColor=white)
-![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-222222?style=for-the-badge&logo=github&logoColor=white)
-
 > **Sistema web profissional para mapeamento espacial, monitoramento de ciclos, controle de colheitas e gestão de equipe em estufas hidropônicas NFT, com integração em nuvem gratuita via Google Sheets.**
 
 ---
@@ -20,7 +13,6 @@
 6. [Estrutura do Banco de Dados](#-estrutura-do-banco-de-dados)
 7. [Segurança e Controle de Acesso](#-segurança-e-controle-de-acesso)
 8. [Atalhos e Operação do Croqui](#-atalhos-e-operação-do-croqui)
-9. [Publicação no GitHub Pages](#-publicação-no-github-pages)
 
 ---
 
@@ -156,26 +148,6 @@ A planilha Google criada pelo script organiza os dados em 5 abas padronizadas:
 | **Cancelar Ação** | Pressione **`Esc`** |
 | **Inspecionar Bancada** | Clique sobre a bancada no croqui para abrir o painel lateral de ações |
 
----
-
-## 🌐 Publicação no GitHub Pages
-
-Para colocar o seu sistema no ar gratuitamente em seu próprio domínio GitHub:
-
-1. Suba os arquivos deste repositório para sua conta no GitHub:
-   ```bash
-   git init
-   git add .
-   git commit -m "HidroManager: Versão Inicial"
-   git branch -M main
-   git remote add origin https://github.com/SEU-USUARIO/SEU-REPOSITORIO.git
-   git push -u origin main
-   ```
-2. No repositório no GitHub, acesse **Settings ⚙️ ➔ Pages**.
-3. Em **Build and deployment ➔ Branch**, selecione **`main`** e pasta **`/(root)`**.
-4. Clique em **Save**.
-5. Em 1 a 2 minutos o link estará disponível:  
-   👉 `https://seu-usuario.github.io/seu-repositorio/`
 
 ---
 

@@ -1480,17 +1480,20 @@ body.dark-theme .tool-btn:hover {
 }
 
 .user-pill-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: 9999px;
-  padding: 4px 12px 4px 8px;
+  padding: 5px 11px;
   cursor: pointer;
   transition: all 0.2s ease;
   color: var(--text-primary);
   font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .user-pill-btn:hover {
@@ -1499,64 +1502,42 @@ body.dark-theme .tool-btn:hover {
 }
 
 .user-pill-btn.visitor {
-  border-color: rgba(148, 163, 184, 0.4);
+  border-color: rgba(148, 163, 184, 0.35);
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--text-secondary);
 }
 
-.user-pill-btn.operator {
-  border-color: rgba(16, 185, 129, 0.4);
+.user-pill-btn.visitor:hover {
+  border-color: var(--primary);
+  color: var(--text-primary);
   background: rgba(16, 185, 129, 0.08);
 }
 
+.user-pill-btn.operator {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
 .user-pill-btn.manager {
-  border-color: rgba(245, 158, 11, 0.45);
-  background: rgba(245, 158, 11, 0.09);
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
 }
 
 .user-badge-icon {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   line-height: 1;
 }
 
-.user-badge-details {
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-  line-height: 1.15;
-}
-
-.user-badge-details strong {
+.user-pill-name {
   font-size: 0.8rem;
-  color: var(--text-primary);
   font-weight: 600;
-  white-space: nowrap;
 }
 
-.user-badge-details small {
-  font-size: 0.68rem;
+.user-pill-chevron {
   color: var(--text-muted);
-}
-
-.user-action-tag {
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  padding: 2px 7px;
-  border-radius: 9999px;
-  background: var(--primary);
-  color: #ffffff;
-  margin-left: 4px;
-}
-
-.user-pill-btn.visitor .user-action-tag {
-  background: #64748b;
-}
-
-.user-pill-btn.operator .user-action-tag {
-  background: #10b981;
-}
-
-.user-pill-btn.manager .user-action-tag {
-  background: #f59e0b;
+  font-size: 0.65rem;
 }
 
 .operador-card-item {
@@ -1586,5 +1567,228 @@ body.dark-theme .tool-btn:hover {
 #modal-setup-gestor .modal-card {
   z-index: 10061 !important;
 }
+
+/* ==========================================================================
+   MODAL DE MANEJOS DA ESTUFA & HISTÓRICO
+   ========================================================================== */
+#modal-manejos-estufa {
+  z-index: 10040 !important;
+}
+
+#modal-manejos-estufa .modal-card {
+  z-index: 10041 !important;
+}
+
+.estufa-historico-item {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid #10b981;
+  border-radius: 4px;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.estufa-historico-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.estufa-historico-top strong {
+  color: var(--text-primary);
+  font-size: 0.78rem;
+}
+
+.estufa-historico-obs {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+/* ==========================================================================
+   MODAL DE TANQUES & RESERVATÓRIOS
+   ========================================================================== */
+#modal-tanques-config {
+  z-index: 10045 !important;
+}
+
+#modal-tanques-config .modal-card {
+  z-index: 10046 !important;
+}
+
+.tanque-card-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  gap: 12px;
+}
+
+.tanque-card-item:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: var(--bg-surface-elevated);
+}
+
+.tanque-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+
+.tanque-card-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.tanque-card-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.tanque-card-title {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.tanque-card-badge {
+  font-size: 0.68rem;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tanque-card-details {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tanque-detail-col {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.tanque-detail-label {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.tanque-detail-value {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.76rem;
+}
+
+.tanque-detail-value.bancadas-tag {
+  color: #10b981;
+  font-family: monospace;
+  font-size: 0.74rem;
+  background: rgba(16, 185, 129, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.tanque-detail-divider {
+  width: 1px;
+  height: 11px;
+  background: var(--border-subtle);
+}
+
+.tanque-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 72px;
+}
+
+.btn-tanque-action {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  padding: 3px 6px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.btn-tanque-action:hover {
+  border-color: var(--primary);
+  color: var(--text-primary);
+  background: var(--bg-surface-elevated);
+}
+
+.btn-tanque-delete:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+#estufa-campos-quimicos {
+  transition: opacity 0.25s ease, max-height 0.3s ease;
+}
+
+/* ==========================================================================
+   RESPONSIVIDADE DA TOP NAVBAR
+   ========================================================================== */
+@media (max-width: 768px) {
+  .top-navbar {
+    height: auto;
+    min-height: 52px;
+    padding: 6px 10px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .brand-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .brand-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .brand-info h1 {
+    font-size: 0.95rem;
+  }
+
+  .toolbar-actions {
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .tool-btn, .btn-primary, .user-pill-btn {
+    padding: 5px 9px;
+    font-size: 0.76rem;
+    gap: 4px;
+  }
+}
+
 
 

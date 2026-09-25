@@ -27,6 +27,13 @@ const AppState = {
   // Lista de Bancadas / Blocos
   blocos: [],
 
+  // Circuitos Hidráulicos e Reservatórios de Solução Nutritiva
+  tanques: [
+    { id_tanque: "TANQUE-ESQ", nome: "Tanque Setor Esquerdo", volume_litros: 5000, setor: "esquerdo" },
+    { id_tanque: "TANQUE-DIR", nome: "Tanque Setor Direito", volume_litros: 5000, setor: "direito" },
+    { id_tanque: "TANQUE-MAT", nome: "Tanque Maternidade", volume_litros: 1000, setor: "maternidade" }
+  ],
+
   // Ciclos de Cultivo (Ativos e Históricos)
   ciclos: [],
 
@@ -290,6 +297,20 @@ const BLOCK_TEMPLATES = {
     diametro_furo_mm: 40,
     total_furos: 300,
     labelPrefix: "BB"
+  },
+  germinacao: {
+    tipo_bloco: "germinacao",
+    largura_m: 1.0,
+    comprimento_m: 1.0,
+    orientacao: "horizontal",
+    qtd_placas: 2,
+    celulas_por_placa: 196,
+    total_furos: 392,
+    qtd_perfis: 0,
+    alinhamento_furos: "paralelo",
+    espacamento_furos_cm: 2.5,
+    diametro_furo_mm: 15,
+    labelPrefix: "G"
   }
 };
 
@@ -305,7 +326,9 @@ function carregarDadosIniciais() {
       if (parsed.blocos && parsed.blocos.length > 0) {
         AppState.blocos = parsed.blocos.map(b => ({
           ...b,
-          diametro_furo_mm: b.diametro_furo_mm || (b.tipo_bloco === "maternidade" ? 35 : b.tipo_bloco === "bercario" ? 40 : 50)
+          diametro_furo_mm: b.diametro_furo_mm || (b.tipo_bloco === "maternidade" ? 35 : b.tipo_bloco === "bercario" ? 40 : b.tipo_bloco === "germinacao" ? 15 : 50),
+          qtd_placas: b.tipo_bloco === "germinacao" ? (b.qtd_placas || 2) : b.qtd_placas,
+          celulas_por_placa: b.tipo_bloco === "germinacao" ? (b.celulas_por_placa || 196) : b.celulas_por_placa
         }));
       }
       if (parsed.ciclos) {
@@ -313,8 +336,19 @@ function carregarDadosIniciais() {
           const bloco = AppState.blocos.find(b => b.id_bloco === c.id_bloco);
           const totalPadrao = bloco ? (bloco.total_furos || 192) : 192;
           const qtdIni = c.qtd_inicial || totalPadrao;
+          let dtPlantio = c.data_plantio;
+          if (typeof dtPlantio === "string" && dtPlantio.includes("T")) {
+            dtPlantio = dtPlantio.split("T")[0];
+          }
+          let dtColheita = c.data_prevista_colheita;
+          if (typeof dtColheita === "string" && dtColheita.includes("T")) {
+            dtColheita = dtColheita.split("T")[0];
+          }
+
           return {
             ...c,
+            data_plantio: dtPlantio || c.data_plantio,
+            data_prevista_colheita: dtColheita || c.data_prevista_colheita,
             qtd_inicial: qtdIni,
             qtd_restante: c.qtd_restante !== undefined ? c.qtd_restante : qtdIni,
             colheitas: c.colheitas || []
@@ -322,6 +356,18 @@ function carregarDadosIniciais() {
         });
       }
       if (parsed.tratos) AppState.tratos = parsed.tratos;
+      if (parsed.tanques && Array.isArray(parsed.tanques) && parsed.tanques.length > 0) {
+        AppState.tanques = parsed.tanques;
+      } else {
+        const tLocal = localStorage.getItem("hidro_tanques");
+        if (tLocal) {
+          try {
+            const tParsed = JSON.parse(tLocal);
+            if (Array.isArray(tParsed) && tParsed.length > 0) AppState.tanques = tParsed;
+          } catch (_) {}
+        }
+      }
+      sincronizarTanquesBancadas();
       return;
     } catch (e) {
       console.warn("Erro ao carregar localStorage v3:", e);
@@ -509,6 +555,7 @@ function carregarDadosIniciais() {
     }
   ];
 
+  sincronizarTanquesBancadas();
   salvarDadosLocal();
 }
 
@@ -517,9 +564,47 @@ function salvarDadosLocal() {
     area: AppState.area,
     blocos: AppState.blocos,
     ciclos: AppState.ciclos,
-    tratos: AppState.tratos
+    tratos: AppState.tratos,
+    tanques: AppState.tanques
   };
   localStorage.setItem("hidro_dados_v3", JSON.stringify(dados));
+  localStorage.setItem("hidro_tanques", JSON.stringify(AppState.tanques));
+}
+
+/**
+ * Retorna o ID do tanque mais adequado para uma bancada com base no seu tipo e setor.
+ */
+function obterTanquePadraoParaBloco(bloco) {
+  if (!AppState.tanques || AppState.tanques.length === 0) return "TANQUE-ESQ";
+  if (bloco.tipo_bloco === "germinacao" || bloco.tipo_bloco === "maternidade") {
+    const tGerm = AppState.tanques.find(t => t.setor === "germinacao" || t.id_tanque === "TANQUE-GERM");
+    if (tGerm) return tGerm.id_tanque;
+    const tMat = AppState.tanques.find(t => t.setor === "maternidade" || t.id_tanque === "TANQUE-MAT");
+    if (tMat) return tMat.id_tanque;
+  }
+  const tSetor = AppState.tanques.find(t => t.setor === bloco.setor);
+  if (tSetor) return tSetor.id_tanque;
+  return AppState.tanques[0].id_tanque;
+}
+
+/**
+ * Garante que todas as bancadas do croqui possuam um reservatório/tanque associado válido.
+ */
+function sincronizarTanquesBancadas() {
+  if (!AppState.tanques || !Array.isArray(AppState.tanques) || AppState.tanques.length === 0) {
+    AppState.tanques = [
+      { id_tanque: "TANQUE-ESQ", nome: "Tanque Setor Esquerdo", volume_litros: 5000, setor: "esquerdo" },
+      { id_tanque: "TANQUE-DIR", nome: "Tanque Setor Direito", volume_litros: 5000, setor: "direito" },
+      { id_tanque: "TANQUE-MAT", nome: "Tanque Maternidade", volume_litros: 1000, setor: "maternidade" }
+    ];
+  }
+  if (AppState.blocos && Array.isArray(AppState.blocos)) {
+    AppState.blocos.forEach(bloco => {
+      if (!bloco.id_tanque || !AppState.tanques.some(t => t.id_tanque === bloco.id_tanque)) {
+        bloco.id_tanque = obterTanquePadraoParaBloco(bloco);
+      }
+    });
+  }
 }
 
 // ==========================================================================
@@ -663,8 +748,7 @@ function atualizarWidgetUsuario() {
   const btnAuth = document.getElementById("btn-user-auth");
   const iconEl = document.getElementById("user-badge-icon");
   const nameEl = document.getElementById("user-display-name");
-  const roleEl = document.getElementById("user-display-role");
-  const actionTag = document.getElementById("user-badge-action-tag");
+  const chevron = document.getElementById("user-pill-chevron");
   const dropName = document.getElementById("dropdown-user-name");
   const dropRole = document.getElementById("dropdown-user-role");
 
@@ -672,17 +756,17 @@ function atualizarWidgetUsuario() {
   const btnGestorPanel = document.getElementById("btn-menu-gestor-panel");
   const btnLogout = document.getElementById("btn-menu-logout");
 
-  if (!btnAuth || !nameEl || !roleEl) return;
+  if (!btnAuth || !nameEl) return;
 
   btnAuth.classList.remove("visitor", "operator", "manager");
 
   if (!AppState.currentUser) {
-    // Visitante (Somente Leitura)
+    // Visitante (Somente Leitura) -> Botão discreto "🔑 Entrar"
     btnAuth.classList.add("visitor");
-    if (iconEl) iconEl.textContent = "👁️";
-    nameEl.textContent = "Visitante";
-    roleEl.textContent = "Somente Leitura";
-    if (actionTag) actionTag.textContent = "Entrar";
+    btnAuth.title = "Fazer login no sistema (Operador ou Gestor)";
+    if (iconEl) iconEl.textContent = "🔑";
+    nameEl.textContent = "Entrar";
+    if (chevron) chevron.style.display = "none";
     if (dropName) dropName.textContent = "Visitante";
     if (dropRole) dropRole.textContent = "Acesso Somente Leitura";
 
@@ -690,12 +774,12 @@ function atualizarWidgetUsuario() {
     if (btnGestorPanel) btnGestorPanel.style.display = "none";
     if (btnLogout) btnLogout.style.display = "none";
   } else if (AppState.currentUser.papel === "operador") {
-    // Operador
+    // Operador -> Pílula compacta "👨‍🌾 Carlos ▼"
     btnAuth.classList.add("operator");
+    btnAuth.title = `Sessão ativa: ${AppState.currentUser.nome} (Operador)`;
     if (iconEl) iconEl.textContent = "👨‍🌾";
     nameEl.textContent = AppState.currentUser.nome;
-    roleEl.textContent = "Operador de Cultivo";
-    if (actionTag) actionTag.textContent = "Conectado";
+    if (chevron) chevron.style.display = "inline";
     if (dropName) dropName.textContent = AppState.currentUser.nome;
     if (dropRole) dropRole.textContent = "Operador Autorizado";
 
@@ -703,13 +787,13 @@ function atualizarWidgetUsuario() {
     if (btnGestorPanel) btnGestorPanel.style.display = "none";
     if (btnLogout) btnLogout.style.display = "flex";
   } else if (AppState.currentUser.papel === "gestor") {
-    // Gestor
+    // Gestor -> Pílula compacta "👑 Gestor ▼"
     btnAuth.classList.add("manager");
+    btnAuth.title = `Sessão ativa: ${AppState.currentUser.nome || "Gestor"} (Gestor)`;
     if (iconEl) iconEl.textContent = "👑";
-    nameEl.textContent = AppState.currentUser.nome;
-    roleEl.textContent = "Gestor Geral";
-    if (actionTag) actionTag.textContent = "Gestão";
-    if (dropName) dropName.textContent = AppState.currentUser.nome;
+    nameEl.textContent = AppState.currentUser.nome || "Gestor";
+    if (chevron) chevron.style.display = "inline";
+    if (dropName) dropName.textContent = AppState.currentUser.nome || "Gestor";
     if (dropRole) dropRole.textContent = "Administrador / Gestor";
 
     if (btnLogin) btnLogin.style.display = "none";
@@ -1143,6 +1227,11 @@ function obterCorPorStatus(statusCor) {
 }
 
 function calcularTotalFuros(bloco) {
+  if (bloco.tipo_bloco === "germinacao") {
+    const placas = bloco.qtd_placas || 2;
+    const celulas = bloco.celulas_por_placa || 196;
+    return placas * celulas;
+  }
   const furosPorPerfil = Math.max(1, Math.floor((bloco.comprimento_m - 0.2) / ((bloco.espacamento_furos_cm || 25) / 100)));
   return (bloco.qtd_perfis || 8) * furosPorPerfil;
 }
@@ -1416,18 +1505,71 @@ function desenharBlocoIndividual(bloco, ciclo, progresso, opacidade) {
         : "#cbd5e1";
   ctx.stroke();
 
-  // 2. Perfis Hidropônicos e Furação Triangular / Paralela
-  const numPerfis = bloco.qtd_perfis || 8;
-  const isTriangular = bloco.alinhamento_furos !== "paralelo";
-  const espacoFuroM = (bloco.espacamento_furos_cm || 25) / 100;
-  const stepFuroPx = metrosParaPixels(espacoFuroM);
-  const diamMm = bloco.diametro_furo_mm || 50;
-  const raioFuroM = (diamMm / 1000) / 2;
-  const raioFuroCalculado = metrosParaPixels(raioFuroM);
-  const raioFuro = Math.max(1.6, Math.min(8, raioFuroCalculado));
+  // 2. Perfis Hidropônicos ou Placas de Espuma Fenólica
+  if (bloco.tipo_bloco === "germinacao") {
+    // --- GERMINAÇÃO: PLACAS DE ESPUMA FENÓLICA & MICRO-CÉLULAS ---
+    const numPlacas = bloco.qtd_placas || 2;
+    const pad = 4 / AppState.camera.zoom;
+    const innerW = largPx - (pad * 2);
+    const innerH = compPx - (pad * 2);
 
-  if (isHoriz) {
+    const placaW = isHoriz ? innerW / numPlacas : innerW;
+    const placaH = isHoriz ? innerH : innerH / numPlacas;
+
+    for (let p = 0; p < numPlacas; p++) {
+      const px = isHoriz ? x + pad + (p * placaW) : x + pad;
+      const py = isHoriz ? y + pad : y + pad + (p * placaH);
+      const m = 2.5 / AppState.camera.zoom;
+      const pw = placaW - (m * 2);
+      const ph = placaH - (m * 2);
+
+      if (pw <= 2 || ph <= 2) continue;
+
+      // Fundo de cada placa de espuma
+      ctx.fillStyle = isDark
+        ? (ciclo ? "rgba(16, 185, 129, 0.12)" : "rgba(30, 41, 59, 0.75)")
+        : (ciclo ? "rgba(209, 250, 229, 0.88)" : "rgba(241, 245, 249, 0.9)");
+      ctx.beginPath();
+      ctx.roundRect(px + m, py + m, pw, ph, [3 / AppState.camera.zoom]);
+      ctx.fill();
+
+      ctx.strokeStyle = isDark
+        ? (ciclo ? "rgba(52, 211, 153, 0.35)" : "rgba(255, 255, 255, 0.12)")
+        : (ciclo ? "rgba(16, 185, 129, 0.45)" : "#cbd5e1");
+      ctx.lineWidth = 0.8 / AppState.camera.zoom;
+      ctx.stroke();
+
+      // Células da espuma (grid de microcélulas pontilhadas)
+      const cols = Math.max(3, Math.min(8, Math.floor(pw / (6 / AppState.camera.zoom))));
+      const rows = Math.max(3, Math.min(8, Math.floor(ph / (6 / AppState.camera.zoom))));
+      const cellW = pw / (cols + 1);
+      const cellH = ph / (rows + 1);
+
+      for (let c = 1; c <= cols; c++) {
+        for (let r = 1; r <= rows; r++) {
+          const cx = px + m + c * cellW;
+          const cy = py + m + r * cellH;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 1.2 / AppState.camera.zoom, 0, Math.PI * 2);
+          if (ciclo) {
+            ctx.fillStyle = corPrimaria;
+          } else {
+            ctx.fillStyle = isDark ? "rgba(255, 255, 255, 0.22)" : "#94a3b8";
+          }
+          ctx.fill();
+        }
+      }
+    }
+  } else if (isHoriz) {
     // --- HORIZONTAL (TRANSVERSAL) ---
+    const numPerfis = bloco.qtd_perfis || 8;
+    const isTriangular = bloco.alinhamento_furos !== "paralelo";
+    const espacoFuroM = (bloco.espacamento_furos_cm || 25) / 100;
+    const stepFuroPx = metrosParaPixels(espacoFuroM);
+    const diamMm = bloco.diametro_furo_mm || 50;
+    const raioFuroM = (diamMm / 1000) / 2;
+    const raioFuroCalculado = metrosParaPixels(raioFuroM);
+    const raioFuro = Math.max(1.6, Math.min(8, raioFuroCalculado));
     const stepPerfilY = compPx / (numPerfis + 1);
 
     for (let i = 0; i < numPerfis; i++) {
@@ -1465,6 +1607,14 @@ function desenharBlocoIndividual(bloco, ciclo, progresso, opacidade) {
     }
   } else {
     // --- VERTICAL (LONGITUDINAL) ---
+    const numPerfis = bloco.qtd_perfis || 8;
+    const isTriangular = bloco.alinhamento_furos !== "paralelo";
+    const espacoFuroM = (bloco.espacamento_furos_cm || 25) / 100;
+    const stepFuroPx = metrosParaPixels(espacoFuroM);
+    const diamMm = bloco.diametro_furo_mm || 50;
+    const raioFuroM = (diamMm / 1000) / 2;
+    const raioFuroCalculado = metrosParaPixels(raioFuroM);
+    const raioFuro = Math.max(1.6, Math.min(8, raioFuroCalculado));
     const stepPerfilX = largPx / (numPerfis + 1);
 
     for (let i = 0; i < numPerfis; i++) {
@@ -1501,7 +1651,7 @@ function desenharBlocoIndividual(bloco, ciclo, progresso, opacidade) {
   }
 
   // 3. Barra de Progresso no Topo
-  const barHeight = 5;
+  const barHeight = Math.min(5, Math.max(2.5, compPx * 0.08));
   const barY = y + 2;
   const barWidthTotal = largPx - 6;
   const barX = x + 3;
@@ -1515,12 +1665,47 @@ function desenharBlocoIndividual(bloco, ciclo, progresso, opacidade) {
     ctx.fillRect(barX, barY, fillWidth, barHeight);
   }
 
-  // 4. IDENTIFICAÇÃO COM PILL BADGES DE ALTO CONTRASTE (SEMPRE PROPORCIONAL AO TEXTO, SEM PROBLEMAS DE ZOOM)
-  const fontSizeTitulo = isHoriz ? 10.5 : 9.5;
-  const fontSizeInfo = isHoriz ? 8.8 : 8.0;
+  // 4. IDENTIFICAÇÃO COM PILL BADGES DE ALTO CONTRASTE (SUPORTE COMPACTO PARA MÓDULOS PEQUENOS)
+  const isCompact = largPx < 115 || compPx < 65;
 
-  if (isHoriz) {
-    // --- Badge do ID (Canto Inferior Esquerdo) ---
+  if (isCompact) {
+    // --- MODO COMPACTO UNIFICADO (CENTRALIZADO, SEM COLISÃO DE TEXTO) ---
+    const badgeH = Math.min(compPx - 10, 24);
+    const badgeW = Math.min(largPx - 8, 58);
+    const badgeX = x + (largPx - badgeW) / 2;
+    const badgeY = y + (compPx - badgeH) / 2;
+
+    ctx.fillStyle = isDark ? "rgba(15, 23, 42, 0.95)" : "rgba(15, 23, 42, 0.92)";
+    ctx.beginPath();
+    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, [badgeH / 2]);
+    ctx.fill();
+    ctx.strokeStyle = ciclo ? corPrimaria : (isDark ? "rgba(255, 255, 255, 0.2)" : "#475569");
+    ctx.lineWidth = ciclo ? 1.4 : 0.9;
+    ctx.stroke();
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    if (badgeH >= 20) {
+      // 2 Linhas: ID em cima, Status/Cultura resumida embaixo
+      ctx.font = `700 8.5px 'Outfit', sans-serif`;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(bloco.id_bloco, badgeX + badgeW / 2, badgeY + badgeH * 0.33);
+
+      ctx.font = `600 7px 'Plus Jakarta Sans', sans-serif`;
+      ctx.fillStyle = ciclo ? (statusCor === "initial" ? "#34d399" : corPrimaria) : "#94a3b8";
+      const shortTxt = ciclo ? (ciclo.cultura ? ciclo.cultura.slice(0, 6) : "Ativo") : "Vaga";
+      ctx.fillText(shortTxt, badgeX + badgeW / 2, badgeY + badgeH * 0.72);
+    } else {
+      ctx.font = `700 8.5px 'Outfit', sans-serif`;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(bloco.id_bloco, badgeX + badgeW / 2, badgeY + badgeH / 2);
+    }
+  } else if (isHoriz) {
+    // --- HORIZONTAL LARGO (BADGES SEPARADOS) ---
+    const fontSizeTitulo = 10.5;
+    const fontSizeInfo = 8.8;
+
     ctx.font = `700 ${fontSizeTitulo}px 'Outfit', sans-serif`;
     const idMetrics = ctx.measureText(bloco.id_bloco);
     const padXId = fontSizeTitulo * 0.65;
@@ -1529,25 +1714,9 @@ function desenharBlocoIndividual(bloco, ciclo, progresso, opacidade) {
     const idBadgeX = x + 5;
     const idBadgeY = y + compPx - idBadgeH - 4;
 
-    // Fundo sólido do badge do ID
-    ctx.fillStyle = isDark ? "rgba(15, 23, 42, 0.94)" : "rgba(15, 23, 42, 0.90)";
-    ctx.beginPath();
-    ctx.roundRect(idBadgeX, idBadgeY, idBadgeW, idBadgeH, [fontSizeTitulo * 0.35]);
-    ctx.fill();
-    ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.18)" : "#334155";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    ctx.fillStyle = "#ffffff";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(bloco.id_bloco, idBadgeX + idBadgeW / 2, idBadgeY + idBadgeH / 2);
-
-    // --- Badge da Cultura (Canto Inferior Direito) — apenas nome, sem % e dias ---
     ctx.font = `600 ${fontSizeInfo}px 'Plus Jakarta Sans', sans-serif`;
     const nomeCultura = formatarNomeCultura(ciclo ? ciclo.cultura : "", ciclo ? ciclo.variedade : "");
     const infoText = ciclo ? nomeCultura : "Vaga";
-
     const infoMetrics = ctx.measureText(infoText);
     const padXInfo = fontSizeInfo * 0.7;
     const infoBadgeW = infoMetrics.width + (padXInfo * 2);
@@ -1555,27 +1724,64 @@ function desenharBlocoIndividual(bloco, ciclo, progresso, opacidade) {
     const infoBadgeX = x + largPx - infoBadgeW - 5;
     const infoBadgeY = y + compPx - infoBadgeH - 4;
 
-    // Fundo sólido do badge de status
-    ctx.fillStyle = isDark ? "rgba(15, 23, 42, 0.90)" : "rgba(15, 23, 42, 0.85)";
-    ctx.beginPath();
-    ctx.roundRect(infoBadgeX, infoBadgeY, infoBadgeW, infoBadgeH, [fontSizeInfo * 0.35]);
-    ctx.fill();
-    ctx.strokeStyle = ciclo ? corPrimaria : (isDark ? "rgba(255, 255, 255, 0.12)" : "#475569");
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
+    // Se houver risco de colisão entre os dois crachás, desenha no centro
+    if (idBadgeX + idBadgeW + 4 >= infoBadgeX) {
+      const comboW = Math.min(largPx - 10, idBadgeW + infoBadgeW + 10);
+      const comboX = x + (largPx - comboW) / 2;
+      const comboY = y + (compPx - idBadgeH) / 2;
 
-    // Texto com cor vibrante
-    ctx.fillStyle = ciclo ? (statusCor === "initial" ? "#34d399" : statusCor === "growth" ? "#10b981" : corPrimaria) : "#64748b";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(infoText, infoBadgeX + infoBadgeW / 2, infoBadgeY + infoBadgeH / 2);
+      ctx.fillStyle = isDark ? "rgba(15, 23, 42, 0.94)" : "rgba(15, 23, 42, 0.90)";
+      ctx.beginPath();
+      ctx.roundRect(comboX, comboY, comboW, idBadgeH, [idBadgeH / 2]);
+      ctx.fill();
+      ctx.strokeStyle = ciclo ? corPrimaria : "#475569";
+      ctx.lineWidth = 1;
+      ctx.stroke();
 
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${bloco.id_bloco} • ${infoText}`, comboX + comboW / 2, comboY + idBadgeH / 2);
+    } else {
+      // Badge ID à esquerda
+      ctx.fillStyle = isDark ? "rgba(15, 23, 42, 0.94)" : "rgba(15, 23, 42, 0.90)";
+      ctx.beginPath();
+      ctx.roundRect(idBadgeX, idBadgeY, idBadgeW, idBadgeH, [fontSizeTitulo * 0.35]);
+      ctx.fill();
+      ctx.strokeStyle = isDark ? "rgba(255, 255, 255, 0.18)" : "#334155";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.font = `700 ${fontSizeTitulo}px 'Outfit', sans-serif`;
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(bloco.id_bloco, idBadgeX + idBadgeW / 2, idBadgeY + idBadgeH / 2);
+
+      // Badge Cultura à direita
+      ctx.fillStyle = isDark ? "rgba(15, 23, 42, 0.90)" : "rgba(15, 23, 42, 0.85)";
+      ctx.beginPath();
+      ctx.roundRect(infoBadgeX, infoBadgeY, infoBadgeW, infoBadgeH, [fontSizeInfo * 0.35]);
+      ctx.fill();
+      ctx.strokeStyle = ciclo ? corPrimaria : (isDark ? "rgba(255, 255, 255, 0.12)" : "#475569");
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      ctx.font = `600 ${fontSizeInfo}px 'Plus Jakarta Sans', sans-serif`;
+      ctx.fillStyle = ciclo ? (statusCor === "initial" ? "#34d399" : statusCor === "growth" ? "#10b981" : corPrimaria) : "#64748b";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(infoText, infoBadgeX + infoBadgeW / 2, infoBadgeY + infoBadgeH / 2);
+    }
   } else {
-    // --- Layout Vertical ---
+    // --- VERTICAL (LONGITUDINAL) ---
+    const fontSizeTitulo = 9.5;
+    const fontSizeInfo = 8.0;
+
     ctx.font = `700 ${fontSizeTitulo}px 'Outfit', sans-serif`;
     const idMetrics = ctx.measureText(bloco.id_bloco);
     const padXId = fontSizeTitulo * 0.65;
-    const idBadgeW = idMetrics.width + (padXId * 2);
+    const idBadgeW = Math.min(largPx - 6, idMetrics.width + (padXId * 2));
     const idBadgeH = fontSizeTitulo * 1.65;
     const idBadgeX = x + (largPx - idBadgeW) / 2;
     const idBadgeY = y + 8;
@@ -1589,13 +1795,12 @@ function desenharBlocoIndividual(bloco, ciclo, progresso, opacidade) {
     ctx.textBaseline = "middle";
     ctx.fillText(bloco.id_bloco, idBadgeX + idBadgeW / 2, idBadgeY + idBadgeH / 2);
 
-    // Info no centro do bloco vertical
     if (ciclo) {
       const nomeCultura = formatarNomeCultura(ciclo.cultura, ciclo.variedade);
       ctx.font = `600 ${fontSizeInfo}px 'Plus Jakarta Sans', sans-serif`;
       const cultMetrics = ctx.measureText(nomeCultura);
       const padXCult = fontSizeInfo * 0.7;
-      const cultBadgeW = cultMetrics.width + (padXCult * 2);
+      const cultBadgeW = Math.min(largPx - 6, cultMetrics.width + (padXCult * 2));
       const cultBadgeH = fontSizeInfo * 1.65;
       const cultBadgeX = x + (largPx - cultBadgeW) / 2;
       const cultBadgeY = y + idBadgeH + 14;
@@ -1618,6 +1823,7 @@ function desenharPreviewBloco() {
   let templateKey = "definitivo";
   if (AppState.activeTool === "add_maternidade") templateKey = "maternidade";
   if (AppState.activeTool === "add_bercario") templateKey = "bercario";
+  if (AppState.activeTool === "add_germinacao") templateKey = "germinacao";
 
   const tpl = BLOCK_TEMPLATES[templateKey];
   const orientacao = AppState.currentOrientation;
@@ -1770,14 +1976,25 @@ function espelharBancadasEsquerdaParaDireita() {
     const isHoriz = b.orientacao !== "vertical";
     const dimX = isHoriz ? b.comprimento_m : b.largura_m;
     const novoX = AppState.area.largura_m - b.pos_x_m - dimX;
-    const novoId = `BD-${String(idx + 1).padStart(2, "0")}`;
+    
+    let novoId = "";
+    if (b.tipo_bloco === "germinacao") {
+      const countGerm = AppState.blocos.filter(item => item.tipo_bloco === "germinacao").length + 1;
+      novoId = `G-${String(countGerm).padStart(2, "0")}`;
+    } else {
+      const countBD = AppState.blocos.filter(item => item.setor === "direito" && item.tipo_bloco !== "germinacao").length + 1;
+      novoId = `BD-${String(countBD).padStart(2, "0")}`;
+    }
 
     const novoBloco = {
       ...b,
       id_bloco: novoId,
       setor: "direito",
       pos_x_m: Number(novoX.toFixed(2)),
-      pos_y_m: b.pos_y_m
+      pos_y_m: b.pos_y_m,
+      id_tanque: (b.tipo_bloco === "germinacao" || b.tipo_bloco === "maternidade")
+        ? (AppState.tanques.find(t => t.id_tanque === "TANQUE-GERM" || t.id_tanque === "TANQUE-MAT")?.id_tanque || "TANQUE-MAT")
+        : (AppState.tanques.find(t => t.setor === "direito")?.id_tanque || "TANQUE-DIR")
     };
 
     AppState.blocos.push(novoBloco);
@@ -1926,20 +2143,31 @@ function registrarEventosCanvas() {
             const cicloAtivo = AppState.ciclos.find(c => c.id_bloco === hovered.id_bloco && c.status === "ativo");
             const prog = cicloAtivo ? calcularProgressoCiclo(cicloAtivo) : null;
 
-            let tipHTML = `<div class="tip-id">🌿 ${hovered.id_bloco} <span style="font-weight:400;color:#64748b;font-size:0.7rem;">${hovered.tipo || "bancada"}</span></div>`;
+            const isGerm = hovered.tipo_bloco === "germinacao";
+            const iconTipo = isGerm ? "🧫" : "🌿";
+            const tipoRotulo = isGerm ? "germinação (espuma fenólica)" : (hovered.tipo_bloco || "bancada");
+
+            let tipHTML = `<div class="tip-id">${iconTipo} ${hovered.id_bloco} <span style="font-weight:400;color:#64748b;font-size:0.7rem;">${tipoRotulo}</span></div>`;
 
             if (cicloAtivo && prog) {
               const nomeCompleto = formatarNomeCultura(cicloAtivo.cultura, cicloAtivo.variedade);
               const corProg = prog.pct >= 80 ? "#f59e0b" : "#10b981";
-              const qtdRestante = cicloAtivo.qtd_restante !== undefined ? cicloAtivo.qtd_restante : (cicloAtivo.qtd_inicial || hovered.total_furos);
+              const totalCap = hovered.total_furos || (isGerm ? (hovered.qtd_placas || 2) * (hovered.celulas_por_placa || 196) : 192);
+              const qtdRestante = cicloAtivo.qtd_restante !== undefined ? cicloAtivo.qtd_restante : (cicloAtivo.qtd_inicial || totalCap);
+              const unidadeNome = isGerm ? "mudas" : "plantas";
+              const colheitaTxt = isGerm 
+                ? (prog.diasRestantes > 0 ? `${prog.diasRestantes}d (p/ berçário)` : "✅ Pronta p/ berçário")
+                : (prog.diasRestantes > 0 ? `${prog.diasRestantes}d` : "✅ Pronto p/ colheita");
+
               tipHTML += `<div class="tip-cultura">${nomeCompleto}</div>`;
               tipHTML += `<div class="tip-row"><span class="tip-label">Progresso</span><span class="tip-value" style="color:${corProg}">${prog.pct}%</span></div>`;
-              tipHTML += `<div class="tip-row"><span class="tip-label">Dias p/ colheita</span><span class="tip-value">${prog.diasRestantes > 0 ? prog.diasRestantes + "d" : "✅ Pronto"}</span></div>`;
-              tipHTML += `<div class="tip-row"><span class="tip-label">Estoque</span><span class="tip-value">${qtdRestante} plantas</span></div>`;
+              tipHTML += `<div class="tip-row"><span class="tip-label">${isGerm ? "Transplante" : "Colheita"}</span><span class="tip-value">${colheitaTxt}</span></div>`;
+              tipHTML += `<div class="tip-row"><span class="tip-label">Estoque</span><span class="tip-value">${qtdRestante} ${unidadeNome} ${isGerm ? `(${hovered.qtd_placas || 2} placas)` : ''}</span></div>`;
               tipHTML += `<div class="tip-progress-bar"><div class="tip-progress-fill" style="width:${prog.pct}%;background:${corProg}"></div></div>`;
             } else {
-              tipHTML += `<div class="tip-vaga">Bancada vaga — sem cultivo ativo</div>`;
-              tipHTML += `<div class="tip-row"><span class="tip-label">Capacidade</span><span class="tip-value">${hovered.total_furos} plantas</span></div>`;
+              tipHTML += `<div class="tip-vaga">${isGerm ? "Módulo vago — pronto para semeadura" : "Bancada vaga — sem cultivo ativo"}</div>`;
+              const totalCap = hovered.total_furos || (isGerm ? (hovered.qtd_placas || 2) * (hovered.celulas_por_placa || 196) : 192);
+              tipHTML += `<div class="tip-row"><span class="tip-label">Capacidade</span><span class="tip-value">${totalCap} ${isGerm ? `mudas (${hovered.qtd_placas || 2} placas)` : 'plantas'}</span></div>`;
             }
             tooltip.innerHTML = tipHTML;
           }
@@ -2114,6 +2342,7 @@ function inserirNovoBloco(xM, yM) {
   let templateKey = "definitivo";
   if (AppState.activeTool === "add_maternidade") templateKey = "maternidade";
   if (AppState.activeTool === "add_bercario") templateKey = "bercario";
+  if (AppState.activeTool === "add_germinacao") templateKey = "germinacao";
 
   const tpl = BLOCK_TEMPLATES[templateKey];
   const orientacao = AppState.currentOrientation;
@@ -2126,9 +2355,15 @@ function inserirNovoBloco(xM, yM) {
   const meioEstufa = AppState.area.largura_m / 2;
   const setor = finalPos.x < meioEstufa ? "esquerdo" : "direito";
 
-  const countSetor = AppState.blocos.filter(b => b.setor === setor).length + 1;
-  const idPrefixo = setor === "esquerdo" ? "BE" : "BD";
-  const idBloco = `${idPrefixo}-${String(countSetor).padStart(2, "0")}`;
+  let idBloco = "";
+  if (tpl.tipo_bloco === "germinacao") {
+    const countGerm = AppState.blocos.filter(b => b.tipo_bloco === "germinacao").length + 1;
+    idBloco = `G-${String(countGerm).padStart(2, "0")}`;
+  } else {
+    const countSetor = AppState.blocos.filter(b => b.setor === setor && b.tipo_bloco !== "germinacao").length + 1;
+    const idPrefixo = setor === "esquerdo" ? "BE" : "BD";
+    idBloco = `${idPrefixo}-${String(countSetor).padStart(2, "0")}`;
+  }
 
   const novoBloco = {
     id_bloco: idBloco,
@@ -2140,10 +2375,14 @@ function inserirNovoBloco(xM, yM) {
     pos_y_m: finalPos.y,
     largura_m: tpl.largura_m,
     comprimento_m: tpl.comprimento_m,
-    qtd_perfis: tpl.qtd_perfis,
+    qtd_placas: tpl.qtd_placas || (tpl.tipo_bloco === "germinacao" ? 2 : undefined),
+    celulas_por_placa: tpl.celulas_por_placa || (tpl.tipo_bloco === "germinacao" ? 196 : undefined),
+    qtd_perfis: tpl.qtd_perfis || 0,
     alinhamento_furos: tpl.alinhamento_furos || "triangular",
     espacamento_furos_cm: tpl.espacamento_furos_cm || 25,
-    total_furos: tpl.total_furos || calcularTotalFuros(tpl)
+    diametro_furo_mm: tpl.diametro_furo_mm || (tpl.tipo_bloco === "germinacao" ? 15 : 50),
+    total_furos: tpl.total_furos || (tpl.tipo_bloco === "germinacao" ? (tpl.qtd_placas || 2) * (tpl.celulas_por_placa || 196) : calcularTotalFuros(tpl)),
+    id_tanque: obterTanquePadraoParaBloco({ tipo_bloco: tpl.tipo_bloco, setor: setor })
   };
 
   AppState.blocos.push(novoBloco);
@@ -2152,7 +2391,8 @@ function inserirNovoBloco(xM, yM) {
   atualizarBadgeInfo();
   solicitarRedesenho();
 
-  mostrarToast(`Bancada ${idBloco} inserida com sucesso!`, "success");
+  const rotuloTipo = tpl.tipo_bloco === "germinacao" ? "Módulo de Germinação" : "Bancada";
+  mostrarToast(`${rotuloTipo} ${idBloco} inserido com sucesso!`, "success");
   definirFerramentaAtiva("select");
 }
 
@@ -2171,21 +2411,45 @@ function abrirPainelInspecao(idBloco) {
   const cicloAtivo = AppState.ciclos.find(c => c.id_bloco === idBloco && c.status === "ativo");
   const progresso = calcularProgressoCiclo(cicloAtivo);
 
-  document.getElementById("inspector-bloco-id").textContent = `Bancada ${bloco.id_bloco}`;
+  const isGerminacao = bloco.tipo_bloco === "germinacao";
+  document.getElementById("inspector-bloco-id").textContent = isGerminacao
+    ? `Módulo Germinação ${bloco.id_bloco}`
+    : `Bancada ${bloco.id_bloco}`;
 
   const isHoriz = bloco.orientacao !== "vertical";
   const orientStr = isHoriz ? "↔ Transversal" : "↕ Longitudinal";
   const furosStr = bloco.alinhamento_furos === "paralelo" ? "Furação Paralela" : "Furação Triangular (Quincôncio)";
   const totalPlantas = bloco.total_furos || calcularTotalFuros(bloco);
 
-  document.getElementById("inspector-tipo-tag").textContent =
-    `${bloco.tipo_bloco.toUpperCase()} • ${orientStr} • ${bloco.qtd_perfis} perfis (${totalPlantas} plantas)`;
-  document.getElementById("inspector-setor-tag").textContent =
-    `Setor ${bloco.setor.charAt(0).toUpperCase() + bloco.setor.slice(1)} • Posição (${bloco.pos_x_m}m, ${bloco.pos_y_m}m) • ${furosStr}`;
+  if (isGerminacao) {
+    document.getElementById("inspector-tipo-tag").textContent =
+      `GERMINAÇÃO • Espuma Fenólica • ${bloco.qtd_placas || 2} placas (${totalPlantas} mudas)`;
+    document.getElementById("inspector-setor-tag").textContent =
+      `Setor ${bloco.setor.charAt(0).toUpperCase() + bloco.setor.slice(1)} • Células: ${bloco.celulas_por_placa || 196}/placa`;
+  } else {
+    document.getElementById("inspector-tipo-tag").textContent =
+      `${bloco.tipo_bloco.toUpperCase()} • ${orientStr} • ${bloco.qtd_perfis} perfis (${totalPlantas} plantas)`;
+    document.getElementById("inspector-setor-tag").textContent =
+      `Setor ${bloco.setor.charAt(0).toUpperCase() + bloco.setor.slice(1)} • Posição (${bloco.pos_x_m}m, ${bloco.pos_y_m}m) • ${furosStr}`;
+  }
 
   const furosTag = document.getElementById("inspector-furos-tag");
   if (furosTag) {
-    furosTag.textContent = `Furo: ${bloco.diametro_furo_mm || 50}mm (${bloco.espacamento_furos_cm || 25}cm)`;
+    if (isGerminacao) {
+      furosTag.textContent = `Espuma Fenólica (${totalPlantas} células)`;
+    } else {
+      furosTag.textContent = `Furo: ${bloco.diametro_furo_mm || 50}mm (${bloco.espacamento_furos_cm || 25}cm)`;
+    }
+  }
+
+  const tanqueLabel = document.getElementById("inspector-tanque-label");
+  if (tanqueLabel) {
+    const tanque = AppState.tanques ? AppState.tanques.find(t => t.id_tanque === bloco.id_tanque) : null;
+    if (tanque) {
+      tanqueLabel.textContent = `${tanque.nome} (${Number(tanque.volume_litros).toLocaleString("pt-BR")} L)`;
+    } else {
+      tanqueLabel.textContent = "Não vinculado";
+    }
   }
 
   const btnToggleCiclo = document.getElementById("label-toggle-ciclo");
@@ -2221,21 +2485,34 @@ function abrirPainelInspecao(idBloco) {
     const colhidasQtd = Math.max(0, totalQtd - restanteQtd);
     const pctDisponivel = totalQtd > 0 ? Math.round((restanteQtd / totalQtd) * 100) : 0;
 
-    document.getElementById("inspector-stock-count").textContent = `${restanteQtd} / ${totalQtd} plantas`;
+    const unidadeNome = isGerminacao ? "mudas" : "plantas";
+    document.getElementById("inspector-stock-count").textContent = `${restanteQtd} / ${totalQtd} ${unidadeNome}`;
     document.getElementById("inspector-stock-bar").style.width = `${pctDisponivel}%`;
-    document.getElementById("inspector-stock-subinfo").textContent = `${colhidasQtd} plantas colhidas`;
+    document.getElementById("inspector-stock-subinfo").textContent = isGerminacao 
+      ? `${colhidasQtd} mudas transplantadas / retiradas` 
+      : `${colhidasQtd} plantas colhidas`;
     document.getElementById("inspector-stock-pct").textContent = `${pctDisponivel}% disponível`;
 
     if (stockBox) stockBox.style.display = "block";
-    if (btnColheita) btnColheita.style.display = "inline-flex";
-    if (btnEditarCultivo) btnEditarCultivo.style.display = "inline-flex";
+    if (btnColheita) {
+      btnColheita.style.display = "inline-flex";
+      btnColheita.innerHTML = isGerminacao 
+        ? "<span>🌿 Transplantar Mudas</span>" 
+        : "<span>🌾 Colheita / Retirada</span>";
+    }
+    if (btnEditarCultivo) {
+      btnEditarCultivo.style.display = "inline-flex";
+      btnEditarCultivo.innerHTML = isGerminacao
+        ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><span>Editar Semeadura</span>'
+        : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><span>Editar Cultivo</span>';
+    }
 
-    btnToggleCiclo.textContent = "Finalizar Ciclo / Liberar";
+    btnToggleCiclo.textContent = isGerminacao ? "Finalizar / Liberar Mesa" : "Finalizar Ciclo / Liberar";
   } else {
-    document.getElementById("inspector-cultura").textContent = "Bancada Vazia";
+    document.getElementById("inspector-cultura").textContent = isGerminacao ? "Módulo Vazio (Semeadura)" : "Bancada Vazia";
     const varEl = document.getElementById("inspector-variedade");
     if (varEl) {
-      varEl.textContent = "Nenhum cultivo em andamento";
+      varEl.textContent = isGerminacao ? "Nenhuma germinação em andamento" : "Nenhum cultivo em andamento";
       varEl.style.display = "block";
     }
     document.getElementById("inspector-progress-pct").textContent = "0%";
@@ -2252,7 +2529,7 @@ function abrirPainelInspecao(idBloco) {
     if (btnColheita) btnColheita.style.display = "none";
     if (btnEditarCultivo) btnEditarCultivo.style.display = "none";
 
-    btnToggleCiclo.textContent = "Iniciar Plantio";
+    btnToggleCiclo.textContent = isGerminacao ? "🌱 Iniciar Germinação" : "Iniciar Plantio";
   }
 
   atualizarContadorHistoricoInspector(idBloco);
@@ -2720,26 +2997,52 @@ function setupModaisEFormularios() {
       if (groupId) groupId.style.display = "none";
     }
 
+    const isGerm = (blocoOuTemplate.tipo_bloco === "germinacao");
+
     document.getElementById("title-config-bloco").textContent = isEdicao
-      ? `Editar Bancada ${blocoOuTemplate.id_bloco}`
+      ? (isGerm ? `Editar Módulo Germinação ${blocoOuTemplate.id_bloco}` : `Editar Bancada ${blocoOuTemplate.id_bloco}`)
       : "Configurar Template Padrão de Bancada";
 
     document.getElementById("config-tipo-bloco").value = blocoOuTemplate.tipo_bloco || "definitivo";
     document.getElementById("config-orientacao").value = blocoOuTemplate.orientacao || AppState.currentOrientation;
-    document.getElementById("config-comprimento").value = blocoOuTemplate.comprimento_m || 6.0;
-    document.getElementById("config-largura").value = blocoOuTemplate.largura_m || 1.5;
+    document.getElementById("config-comprimento").value = blocoOuTemplate.comprimento_m || (isGerm ? 1.0 : 6.0);
+    document.getElementById("config-largura").value = blocoOuTemplate.largura_m || (isGerm ? 1.0 : 1.5);
     document.getElementById("config-qtd-perfis").value = blocoOuTemplate.qtd_perfis || 8;
     document.getElementById("config-alinhamento-furos").value = blocoOuTemplate.alinhamento_furos || "triangular";
     document.getElementById("config-espaco-furos").value = blocoOuTemplate.espacamento_furos_cm || 25;
     document.getElementById("config-diametro-furo").value = blocoOuTemplate.diametro_furo_mm || 50;
 
-    const rowPos = document.getElementById("row-pos-bloco");
-    if (isEdicao) {
-      rowPos.style.display = "grid";
-      document.getElementById("config-pos-x").value = blocoOuTemplate.pos_x_m || 0.5;
-      document.getElementById("config-pos-y").value = blocoOuTemplate.pos_y_m || 2.0;
-    } else {
-      rowPos.style.display = "none";
+    // Campos de germinação
+    const inputQtdPlacas = document.getElementById("config-qtd-placas");
+    if (inputQtdPlacas) inputQtdPlacas.value = blocoOuTemplate.qtd_placas || 2;
+
+    const selectCelulas = document.getElementById("config-celulas-placa");
+    const customCelulas = document.getElementById("config-custom-celulas");
+    const groupCustom = document.getElementById("group-custom-celulas");
+    const celVal = blocoOuTemplate.celulas_por_placa || 196;
+
+    if (selectCelulas) {
+      if ([100, 196, 300].includes(celVal)) {
+        selectCelulas.value = String(celVal);
+        if (groupCustom) groupCustom.style.display = "none";
+      } else {
+        selectCelulas.value = "custom";
+        if (customCelulas) customCelulas.value = celVal;
+        if (groupCustom) groupCustom.style.display = "block";
+      }
+    }
+
+    const tanqueSelect = document.getElementById("config-tanque-select");
+    if (tanqueSelect) {
+      tanqueSelect.innerHTML = (AppState.tanques || []).map(t =>
+        `<option value="${t.id_tanque}">${t.nome} (${Number(t.volume_litros).toLocaleString("pt-BR")} L)</option>`
+      ).join("");
+      if (isEdicao && blocoOuTemplate.id_tanque) {
+        tanqueSelect.value = blocoOuTemplate.id_tanque;
+      } else if (tanqueSelect.options.length > 0) {
+        const padraoId = obterTanquePadraoParaBloco(blocoOuTemplate);
+        if (padraoId) tanqueSelect.value = padraoId;
+      }
     }
 
     atualizarCalculosPreviewModalBloco();
@@ -2747,22 +3050,52 @@ function setupModaisEFormularios() {
   }
 
   function atualizarCalculosPreviewModalBloco() {
+    const tipo = document.getElementById("config-tipo-bloco")?.value || "definitivo";
     const larg = parseFloat(document.getElementById("config-largura").value) || 1.5;
     const comp = parseFloat(document.getElementById("config-comprimento").value) || 6.0;
-    const qtdPerfis = parseInt(document.getElementById("config-qtd-perfis").value, 10) || 8;
-    const espacoFuroCm = parseFloat(document.getElementById("config-espaco-furos").value) || 25;
-    const diamFuro = document.getElementById("config-diametro-furo")?.value || 50;
 
-    const espacoPerfisCm = ((larg / (qtdPerfis + 1)) * 100).toFixed(1);
-    document.getElementById("config-espaco-perfis").value = `${espacoPerfisCm} cm`;
+    const secaoGerm = document.getElementById("secao-germinacao-espuma");
+    const secaoPerfis = document.getElementById("secao-perfis-canaletas");
+    const labelComp = document.getElementById("label-config-comprimento");
 
-    const furosPorPerfil = Math.max(1, Math.floor((comp - 0.2) / (espacoFuroCm / 100)));
-    const totalPlantas = qtdPerfis * furosPorPerfil;
-    document.getElementById("config-total-furos-preview").textContent = `${totalPlantas} plantas • Furos de ${diamFuro}mm`;
+    if (tipo === "germinacao") {
+      if (secaoGerm) secaoGerm.style.display = "block";
+      if (secaoPerfis) secaoPerfis.style.display = "none";
+      if (labelComp) labelComp.textContent = "Comprimento da Mesa (m):";
+
+      const qtdPlacas = parseInt(document.getElementById("config-qtd-placas")?.value, 10) || 2;
+      const selCel = document.getElementById("config-celulas-placa")?.value || "196";
+      const groupCustom = document.getElementById("group-custom-celulas");
+      if (groupCustom) groupCustom.style.display = selCel === "custom" ? "block" : "none";
+
+      const celulas = selCel === "custom" 
+        ? (parseInt(document.getElementById("config-custom-celulas")?.value, 10) || 196) 
+        : (parseInt(selCel, 10) || 196);
+
+      const totalMudas = qtdPlacas * celulas;
+      document.getElementById("config-total-furos-preview").textContent = 
+        `${totalMudas.toLocaleString("pt-BR")} mudas • ${qtdPlacas} placa(s) de ${celulas} células de espuma fenólica`;
+    } else {
+      if (secaoGerm) secaoGerm.style.display = "none";
+      if (secaoPerfis) secaoPerfis.style.display = "block";
+      if (labelComp) labelComp.textContent = "Comprimento dos Perfis (m):";
+
+      const qtdPerfis = parseInt(document.getElementById("config-qtd-perfis").value, 10) || 8;
+      const espacoFuroCm = parseFloat(document.getElementById("config-espaco-furos").value) || 25;
+      const diamFuro = document.getElementById("config-diametro-furo")?.value || 50;
+
+      const espacoPerfisCm = ((larg / (qtdPerfis + 1)) * 100).toFixed(1);
+      document.getElementById("config-espaco-perfis").value = `${espacoPerfisCm} cm`;
+
+      const furosPorPerfil = Math.max(1, Math.floor((comp - 0.2) / (espacoFuroCm / 100)));
+      const totalPlantas = qtdPerfis * furosPorPerfil;
+      document.getElementById("config-total-furos-preview").textContent = `${totalPlantas} plantas • Furos de ${diamFuro}mm`;
+    }
   }
 
-  ["config-largura", "config-comprimento", "config-qtd-perfis", "config-espaco-furos", "config-diametro-furo"].forEach(id => {
+  ["config-largura", "config-comprimento", "config-qtd-perfis", "config-espaco-furos", "config-diametro-furo", "config-tipo-bloco", "config-qtd-placas", "config-celulas-placa", "config-custom-celulas"].forEach(id => {
     document.getElementById(id)?.addEventListener("input", atualizarCalculosPreviewModalBloco);
+    document.getElementById(id)?.addEventListener("change", atualizarCalculosPreviewModalBloco);
   });
 
   document.getElementById("btn-edit-bloco").addEventListener("click", () => {
@@ -2783,6 +3116,7 @@ function setupModaisEFormularios() {
     let key = "definitivo";
     if (AppState.activeTool === "add_maternidade") key = "maternidade";
     if (AppState.activeTool === "add_bercario") key = "bercario";
+    if (AppState.activeTool === "add_germinacao") key = "germinacao";
     abrirConfiguracaoBloco(BLOCK_TEMPLATES[key], false);
   });
 
@@ -2799,8 +3133,22 @@ function setupModaisEFormularios() {
     const diametroFuro = parseInt(document.getElementById("config-diametro-furo").value, 10) || 50;
     const tipo = document.getElementById("config-tipo-bloco").value;
 
-    const furosPorPerfil = Math.max(1, Math.floor((comprimento - 0.2) / (espacoFuros / 100)));
-    const totalFuros = qtdPerfis * furosPorPerfil;
+    const isGerm = (tipo === "germinacao");
+    let qtdPlacas = 2;
+    let celulasPlaca = 196;
+    let totalFuros = 0;
+
+    if (isGerm) {
+      qtdPlacas = parseInt(document.getElementById("config-qtd-placas")?.value, 10) || 2;
+      const selCel = document.getElementById("config-celulas-placa")?.value || "196";
+      celulasPlaca = selCel === "custom"
+        ? (parseInt(document.getElementById("config-custom-celulas")?.value, 10) || 196)
+        : (parseInt(selCel, 10) || 196);
+      totalFuros = qtdPlacas * celulasPlaca;
+    } else {
+      const furosPorPerfil = Math.max(1, Math.floor((comprimento - 0.2) / (espacoFuros / 100)));
+      totalFuros = qtdPerfis * furosPorPerfil;
+    }
 
     if (idOriginal) {
       const bloco = AppState.blocos.find(b => b.id_bloco === idOriginal);
@@ -2823,27 +3171,27 @@ function setupModaisEFormularios() {
         bloco.orientacao = orientacao;
         bloco.comprimento_m = comprimento;
         bloco.largura_m = largura;
-        bloco.qtd_perfis = qtdPerfis;
+        bloco.qtd_placas = isGerm ? qtdPlacas : undefined;
+        bloco.celulas_por_placa = isGerm ? celulasPlaca : undefined;
+        bloco.qtd_perfis = isGerm ? 0 : qtdPerfis;
         bloco.alinhamento_furos = alinhamento;
-        bloco.espacamento_furos_cm = espacoFuros;
-        bloco.diametro_furo_mm = diametroFuro;
+        bloco.espacamento_furos_cm = isGerm ? 2.5 : espacoFuros;
+        bloco.diametro_furo_mm = isGerm ? 15 : diametroFuro;
         bloco.total_furos = totalFuros;
 
-        const posX = parseFloat(document.getElementById("config-pos-x").value);
-        const posY = parseFloat(document.getElementById("config-pos-y").value);
-        if (!isNaN(posX)) bloco.pos_x_m = posX;
-        if (!isNaN(posY)) bloco.pos_y_m = posY;
-        bloco.setor = bloco.pos_x_m < (AppState.area.largura_m / 2) ? "esquerdo" : "direito";
+        const selTanqueId = document.getElementById("config-tanque-select")?.value;
+        if (selTanqueId) bloco.id_tanque = selTanqueId;
 
         salvarDadosLocal();
         abrirPainelInspecao(novoId);
         solicitarRedesenho();
-        mostrarToast(`Bancada ${novoId} atualizada com sucesso!`, "success");
+        mostrarToast(`${isGerm ? "Módulo" : "Bancada"} ${novoId} atualizado com sucesso!`, "success");
       }
     } else {
       let key = "definitivo";
       if (tipo === "maternidade") key = "maternidade";
       if (tipo === "bercario") key = "bercario";
+      if (tipo === "germinacao") key = "germinacao";
 
       BLOCK_TEMPLATES[key] = {
         ...BLOCK_TEMPLATES[key],
@@ -2851,10 +3199,12 @@ function setupModaisEFormularios() {
         orientacao: orientacao,
         comprimento_m: comprimento,
         largura_m: largura,
-        qtd_perfis: qtdPerfis,
+        qtd_placas: isGerm ? qtdPlacas : undefined,
+        celulas_por_placa: isGerm ? celulasPlaca : undefined,
+        qtd_perfis: isGerm ? 0 : qtdPerfis,
         alinhamento_furos: alinhamento,
-        espacamento_furos_cm: espacoFuros,
-        diametro_furo_mm: diametroFuro,
+        espacamento_furos_cm: isGerm ? 2.5 : espacoFuros,
+        diametro_furo_mm: isGerm ? 15 : diametroFuro,
         total_furos: totalFuros
       };
       AppState.currentOrientation = orientacao;
@@ -2864,10 +3214,99 @@ function setupModaisEFormularios() {
     modalConfigBloco.classList.remove("open");
   });
 
-  // --- TRATOS CULTURAIS ---
+  // --- TRATOS CULTURAIS (POR BANCADA: MATERNIDADE VS DEFINITIVA) ---
+  function configurarTagsModalTrato(bloco) {
+    const container = document.getElementById("trato-tags-container");
+    const avisoBox = document.getElementById("trato-contexto-aviso");
+    const avisoBadge = document.getElementById("trato-bloco-id-badge");
+    const avisoMsg = document.getElementById("trato-contexto-msg");
+    const inputTipo = document.getElementById("trato-tipo-input");
+    if (!container || !inputTipo) return;
+
+    const isGerminacao = bloco && bloco.tipo_bloco === "germinacao";
+    const isMaternidade = bloco && bloco.tipo_bloco === "maternidade";
+
+    if (avisoBadge) avisoBadge.textContent = isGerminacao ? `Módulo ${bloco.id_bloco}` : `Bancada ${bloco ? bloco.id_bloco : ""}`;
+
+    let tags = [];
+    if (isGerminacao) {
+      if (avisoBox) {
+        avisoBox.style.background = "rgba(16, 185, 129, 0.12)";
+        avisoBox.style.borderColor = "rgba(16, 185, 129, 0.35)";
+      }
+      if (avisoBadge) avisoBadge.style.color = "#10b981";
+      if (avisoMsg) {
+        avisoMsg.innerHTML = "<strong>Módulo de Germinação (Espuma Fenólica)</strong>: Manejos de semeadura, controle de umidade das placas, quebra de dormência e raleio de mudas.";
+      }
+      tags = [
+        "Umedecimento / Irrigação das Placas",
+        "Retirada do Escuro (Emergência)",
+        "Desbaste / Raleio de Plântulas",
+        "Pulverização / Hidratação Foliar",
+        "Ajuste de Condutividade Suave",
+        "Sanitização e Limpeza da Mesa"
+      ];
+    } else if (isMaternidade) {
+      if (avisoBox) {
+        avisoBox.style.background = "rgba(16, 185, 129, 0.09)";
+        avisoBox.style.borderColor = "rgba(16, 185, 129, 0.3)";
+      }
+      if (avisoBadge) avisoBadge.style.color = "#10b981";
+      if (avisoMsg) {
+        avisoMsg.innerHTML = "<strong>Maternidade de Mudas</strong>: Possui reservatório próprio dedicado. Adições de nutrientes e correção de pH afetam apenas esta bancada.";
+      }
+      tags = [
+        "Adição de Nutrientes (Maternidade)",
+        "Correção de pH (Maternidade)",
+        "Semeadura / Germinação",
+        "Limpeza e sanitização de canaletas",
+        "Controle sanitário preventivo",
+        "Desobstrução de microaspersores"
+      ];
+    } else {
+      const tipoNome = bloco && bloco.tipo_bloco === "bercario" ? "Berçário" : "Definitiva (Engorda)";
+      if (avisoBox) {
+        avisoBox.style.background = "rgba(59, 130, 246, 0.08)";
+        avisoBox.style.borderColor = "rgba(59, 130, 246, 0.25)";
+      }
+      if (avisoBadge) avisoBadge.style.color = "#3b82f6";
+      if (avisoMsg) {
+        avisoMsg.innerHTML = `<strong>${tipoNome}</strong>: Recebe solução do tanque central da estufa. Para nutrição e pH geral, utilize o botão <strong>🏠 Estufa</strong> no topo. Registre aqui tratos individuais do leito.`;
+      }
+      tags = [
+        "Limpeza e sanitização de canaletas",
+        "Desobstrução de injetores/microtubos",
+        "Raleio / Desbaste de mudas",
+        "Tratamento fitossanitário localizado",
+        "Manutenção de cavalete e perfil",
+        "Inspeção de fluxo e raízes"
+      ];
+    }
+
+    container.innerHTML = "";
+    tags.forEach((tag, idx) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `trato-tag-btn ${idx === 0 ? "active" : ""}`;
+      btn.setAttribute("data-value", tag);
+      btn.textContent = tag;
+      btn.addEventListener("click", () => {
+        container.querySelectorAll(".trato-tag-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        inputTipo.value = tag;
+      });
+      container.appendChild(btn);
+    });
+
+    inputTipo.value = tags[0];
+  }
+
   document.getElementById("btn-open-trato-modal").addEventListener("click", () => {
     if (!verificarPermissaoEdicao()) return;
     if (!AppState.selectedBlockId) return;
+    const bloco = AppState.blocos.find(b => b.id_bloco === AppState.selectedBlockId);
+    configurarTagsModalTrato(bloco);
+
     const now = new Date();
     const dataLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     document.getElementById("trato-data-hora").value = dataLocal;
@@ -2877,15 +3316,7 @@ function setupModaisEFormularios() {
     modalTrato.classList.add("open");
   });
 
-  const tagButtons = document.querySelectorAll(".trato-tag-btn");
   const tratoInput = document.getElementById("trato-tipo-input");
-  tagButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      tagButtons.forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      tratoInput.value = btn.getAttribute("data-value");
-    });
-  });
 
   document.getElementById("form-trato").addEventListener("submit", async e => {
     e.preventDefault();
@@ -2921,6 +3352,375 @@ function setupModaisEFormularios() {
     }
   });
 
+  // --- MANEJOS DA ESTUFA & TANQUES DE SOLUÇÃO (MODAL 14) ---
+  const modalManejosEstufa = document.getElementById("modal-manejos-estufa");
+  const btnManejosEstufa = document.getElementById("btn-manejos-estufa");
+
+  function atualizarOpcoesAlvoEstufa() {
+    const alvoSelect = document.getElementById("estufa-alvo-select");
+    if (!alvoSelect) return;
+    const valorAtual = alvoSelect.value;
+    let html = `<option value="ESTRUTURA-GERAL">🏠 Estrutura Geral da Estufa (Teto, Telas, Corredores)</option>`;
+    (AppState.tanques || []).forEach(t => {
+      const volFmt = Number(t.volume_litros).toLocaleString("pt-BR");
+      html += `<option value="${t.id_tanque}">🚰 ${t.nome} (${volFmt} L)</option>`;
+    });
+    alvoSelect.innerHTML = html;
+    if (valorAtual && Array.from(alvoSelect.options).some(o => o.value === valorAtual)) {
+      alvoSelect.value = valorAtual;
+    }
+  }
+
+  function atualizarVisibilidadeCamposEstufa(tipoTrato, tagBtn) {
+    const camposQuimicos = document.getElementById("estufa-campos-quimicos");
+    const alvoSelect = document.getElementById("estufa-alvo-select");
+    const isQuimico = tagBtn
+      ? tagBtn.getAttribute("data-tipo") === "quimico"
+      : (tipoTrato && (tipoTrato.includes("pH") || tipoTrato.includes("Nutrientes") || tipoTrato.includes("Solução")));
+
+    if (camposQuimicos) {
+      camposQuimicos.style.display = isQuimico ? "block" : "none";
+    }
+
+    if (alvoSelect) {
+      if (isQuimico) {
+        // Se estiver em Estrutura Geral para manejo químico de fertirrigação, direciona ao primeiro tanque
+        if (alvoSelect.value === "ESTRUTURA-GERAL" && AppState.tanques && AppState.tanques.length > 0) {
+          alvoSelect.value = AppState.tanques[0].id_tanque;
+        }
+      } else {
+        // Manejo estrutural (limpeza de teto, tela, corredores) aplica à estrutura geral
+        alvoSelect.value = "ESTRUTURA-GERAL";
+      }
+    }
+  }
+
+  function renderizarHistoricoEstufaModal() {
+    const lista = document.getElementById("estufa-historico-lista");
+    const countEl = document.getElementById("estufa-historico-count");
+    if (!lista) return;
+
+    const tratosEstufa = AppState.tratos
+      .filter(t => t.id_bloco === "ESTUFA-GERAL" || (t.id_bloco && t.id_bloco.startsWith("TANQUE-")) || t.id_ciclo === "ESTUFA")
+      .sort((a, b) => new Date(b.data_hora) - new Date(a.data_hora));
+
+    if (countEl) {
+      countEl.textContent = `${tratosEstufa.length} ${tratosEstufa.length === 1 ? "registro" : "registros"}`;
+    }
+
+    if (tratosEstufa.length === 0) {
+      lista.innerHTML = `<span style="color: var(--text-muted); font-style: italic;">Nenhum manejo geral da estufa registrado até o momento.</span>`;
+      return;
+    }
+
+    lista.innerHTML = "";
+    tratosEstufa.slice(0, 6).forEach(t => {
+      let alvoNome = "Estrutura Geral";
+      if (t.alvo_nome) {
+        alvoNome = t.alvo_nome;
+      } else if (t.id_bloco && t.id_bloco.startsWith("TANQUE-")) {
+        const tq = (AppState.tanques || []).find(tk => tk.id_tanque === t.id_bloco);
+        alvoNome = tq ? tq.nome : t.id_bloco;
+      }
+
+      const item = document.createElement("div");
+      item.className = "estufa-historico-item";
+      item.innerHTML = `
+        <div class="estufa-historico-top">
+          <div>
+            <strong>${t.tipo_manejo}</strong>
+            <span style="font-size: 0.7rem; color: #10b981; font-weight: 600; margin-left: 6px;">[${alvoNome}]</span>
+          </div>
+          <span>${t.data_hora} (${t.responsavel || "Técnico"})</span>
+        </div>
+        <div class="estufa-historico-obs">${t.observacoes || "Sem observações adicionais."}</div>
+      `;
+      lista.appendChild(item);
+    });
+  }
+
+  btnManejosEstufa?.addEventListener("click", () => {
+    const now = new Date();
+    const dataLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    const dtEl = document.getElementById("estufa-data-hora");
+    if (dtEl) dtEl.value = dataLocal;
+    const respEl = document.getElementById("estufa-responsavel");
+    if (respEl) {
+      respEl.value = AppState.currentUser ? AppState.currentUser.nome : "Operador Geral";
+    }
+
+    atualizarOpcoesAlvoEstufa();
+
+    const activeTag = document.querySelector("#estufa-tags-container .trato-tag-btn.active");
+    const activeVal = activeTag ? activeTag.getAttribute("data-value") : "Correção de pH / CE";
+    atualizarVisibilidadeCamposEstufa(activeVal, activeTag);
+
+    renderizarHistoricoEstufaModal();
+    modalManejosEstufa?.classList.add("open");
+  });
+
+  const estufaTagBtns = document.querySelectorAll("#estufa-tags-container .trato-tag-btn");
+  const estufaTipoInput = document.getElementById("estufa-tipo-input");
+  estufaTagBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      estufaTagBtns.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const val = btn.getAttribute("data-value");
+      if (estufaTipoInput) estufaTipoInput.value = val;
+      atualizarVisibilidadeCamposEstufa(val, btn);
+    });
+  });
+
+  document.getElementById("form-manejos-estufa")?.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!verificarPermissaoEdicao()) return;
+
+    const tipoManejo = estufaTipoInput ? estufaTipoInput.value : "Manejo Geral da Estufa";
+    const responsavel = document.getElementById("estufa-responsavel")?.value.trim() || "Operador Geral";
+    const dataHora = (document.getElementById("estufa-data-hora")?.value || new Date().toISOString()).replace("T", " ");
+    const ph = document.getElementById("estufa-ph")?.value.trim();
+    const ec = document.getElementById("estufa-ec")?.value.trim();
+    const dosagem = document.getElementById("estufa-dosagem")?.value.trim();
+    const obs = document.getElementById("estufa-obs")?.value.trim();
+
+    const idAlvo = document.getElementById("estufa-alvo-select")?.value || "ESTRUTURA-GERAL";
+    let alvoNome = "Estrutura Geral da Estufa";
+    if (idAlvo !== "ESTRUTURA-GERAL") {
+      const tq = (AppState.tanques || []).find(tk => tk.id_tanque === idAlvo);
+      alvoNome = tq ? tq.nome : idAlvo;
+    }
+
+    let detalhes = [];
+    detalhes.push(`🎯 Alvo: ${alvoNome}`);
+    if (dosagem) detalhes.push(`Dose/Vol: ${dosagem}`);
+    if (ph) detalhes.push(`pH: ${ph}`);
+    if (ec) detalhes.push(`CE: ${ec} mS/cm`);
+    if (obs) detalhes.push(obs);
+
+    const observacoesFinais = detalhes.join(" | ");
+
+    const novoTratoEstufa = {
+      id_trato: `TRATO-ESTUFA-${Date.now()}`,
+      id_bloco: idAlvo,
+      id_ciclo: "ESTUFA",
+      id_tanque: idAlvo !== "ESTRUTURA-GERAL" ? idAlvo : null,
+      alvo_nome: alvoNome,
+      data_hora: dataHora,
+      tipo_manejo: tipoManejo,
+      responsavel: responsavel,
+      observacoes: observacoesFinais
+    };
+
+    AppState.tratos.push(novoTratoEstufa);
+    salvarDadosLocal();
+    modalManejosEstufa?.classList.remove("open");
+
+    // Limpar campos opcionais
+    if (document.getElementById("estufa-ph")) document.getElementById("estufa-ph").value = "";
+    if (document.getElementById("estufa-ec")) document.getElementById("estufa-ec").value = "";
+    if (document.getElementById("estufa-dosagem")) document.getElementById("estufa-dosagem").value = "";
+    if (document.getElementById("estufa-obs")) document.getElementById("estufa-obs").value = "";
+
+    mostrarToast(`Manejo de Estufa "${tipoManejo}" salvo no alvo [${alvoNome}]!`, "success");
+
+    if (AppState.googleSheetsUrl) {
+      await registrarAcaoRemota("registrarTrato", novoTratoEstufa);
+    }
+  });
+
+  // --- MODAL 15: GERENCIADOR DE TANQUES & RESERVATÓRIOS ---
+  function setupTanquesModal() {
+    const modalTanques = document.getElementById("modal-tanques-config");
+    const btnSalvar = document.getElementById("btn-salvar-tanque");
+    const btnCancelar = document.getElementById("btn-cancelar-edicao-tanque");
+    const inputEditId = document.getElementById("tanque-id-edit");
+    const inputNome = document.getElementById("tanque-nome");
+    const inputVolume = document.getElementById("tanque-volume");
+    const selectSetor = document.getElementById("tanque-setor");
+    const formTitle = document.getElementById("form-tanque-title");
+    const containerLista = document.getElementById("tanques-lista-container");
+    const countEl = document.getElementById("tanques-lista-count");
+
+    function resetarFormTanque() {
+      if (inputEditId) inputEditId.value = "";
+      if (inputNome) inputNome.value = "";
+      if (inputVolume) inputVolume.value = "";
+      if (selectSetor) selectSetor.value = "esquerdo";
+      if (formTitle) formTitle.textContent = "+ Cadastrar Novo Tanque";
+      if (btnCancelar) btnCancelar.style.display = "none";
+      if (btnSalvar) btnSalvar.textContent = "✓ Salvar Tanque";
+    }
+
+    function renderizarListaTanques() {
+      if (!containerLista) return;
+      const tanques = AppState.tanques || [];
+      if (countEl) {
+        countEl.textContent = `${tanques.length} ${tanques.length === 1 ? "tanque" : "tanques"}`;
+      }
+
+      if (tanques.length === 0) {
+        containerLista.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 12px;">Nenhum tanque cadastrado.</div>`;
+        return;
+      }
+
+      containerLista.innerHTML = "";
+      tanques.forEach(t => {
+        const bancadas = AppState.blocos.filter(b => b.id_tanque === t.id_tanque);
+        const bancadasIds = bancadas.map(b => b.id_bloco);
+        let bancadasTxt = "";
+        if (bancadas.length === 0) {
+          bancadasTxt = "Nenhuma";
+        } else if (bancadas.length <= 4) {
+          bancadasTxt = bancadasIds.join(", ");
+        } else {
+          bancadasTxt = `${bancadasIds.slice(0, 3).join(", ")} +${bancadas.length - 3}`;
+        }
+
+        const volFmt = Number(t.volume_litros).toLocaleString("pt-BR");
+        const setorLabel = t.setor === "esquerdo" ? "Setor Esquerdo"
+          : t.setor === "direito" ? "Setor Direito"
+          : t.setor === "maternidade" ? "Maternidade"
+          : "Geral";
+
+        const card = document.createElement("div");
+        card.className = "tanque-card-item";
+        card.innerHTML = `
+          <div class="tanque-card-main">
+            <div class="tanque-card-header">
+              <span class="tanque-card-icon">🚰</span>
+              <strong class="tanque-card-title">${t.nome}</strong>
+              <span class="tanque-card-badge">${bancadas.length} bancada(s)</span>
+            </div>
+            <div class="tanque-card-details">
+              <div class="tanque-detail-col">
+                <span class="tanque-detail-label">Capacidade:</span>
+                <strong class="tanque-detail-value">${volFmt} L</strong>
+              </div>
+              <div class="tanque-detail-divider"></div>
+              <div class="tanque-detail-col">
+                <span class="tanque-detail-label">Setor:</span>
+                <strong class="tanque-detail-value">${setorLabel}</strong>
+              </div>
+              <div class="tanque-detail-divider"></div>
+              <div class="tanque-detail-col" title="${bancadasIds.length > 0 ? bancadasIds.join(', ') : 'Nenhuma bancada vinculada'}">
+                <span class="tanque-detail-label">Bancadas:</span>
+                <span class="tanque-detail-value bancadas-tag">${bancadasTxt}</span>
+              </div>
+            </div>
+          </div>
+          <div class="tanque-card-actions">
+            <button type="button" class="btn-tanque-action btn-tanque-edit" data-id="${t.id_tanque}" title="Editar dados do tanque">✏️ Editar</button>
+            <button type="button" class="btn-tanque-action btn-tanque-delete" data-id="${t.id_tanque}" title="Excluir tanque">🗑️ Excluir</button>
+          </div>
+        `;
+        containerLista.appendChild(card);
+      });
+
+      containerLista.querySelectorAll(".btn-tanque-edit").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          const t = (AppState.tanques || []).find(item => item.id_tanque === id);
+          if (!t) return;
+          if (inputEditId) inputEditId.value = t.id_tanque;
+          if (inputNome) inputNome.value = t.nome;
+          if (inputVolume) inputVolume.value = t.volume_litros;
+          if (selectSetor) selectSetor.value = t.setor || "esquerdo";
+          if (formTitle) formTitle.textContent = `✏️ Editar Tanque: ${t.nome}`;
+          if (btnCancelar) btnCancelar.style.display = "inline-block";
+          if (btnSalvar) btnSalvar.textContent = "✓ Atualizar Tanque";
+          inputNome?.focus();
+        });
+      });
+
+      containerLista.querySelectorAll(".btn-tanque-delete").forEach(btn => {
+        btn.addEventListener("click", () => {
+          if (!verificarPermissaoEdicao(true)) return;
+          const id = btn.getAttribute("data-id");
+          if (AppState.tanques.length <= 1) {
+            mostrarToast("É necessário manter ao menos 1 tanque cadastrado no sistema.", "warning");
+            return;
+          }
+          const t = AppState.tanques.find(item => item.id_tanque === id);
+          if (!t) return;
+
+          const bancadasVinculadas = AppState.blocos.filter(b => b.id_tanque === id).length;
+          const msgAviso = `Deseja realmente excluir o reservatório "${t.nome}"?` +
+            (bancadasVinculadas > 0 ? `\n\nAtenção: ${bancadasVinculadas} bancada(s) vinculadas serão migradas automaticamente para outro tanque ativo.` : "");
+
+          if (!confirm(msgAviso)) return;
+
+          AppState.tanques = AppState.tanques.filter(item => item.id_tanque !== id);
+          const outroTanque = AppState.tanques[0];
+          if (bancadasVinculadas > 0 && outroTanque) {
+            AppState.blocos.forEach(b => {
+              if (b.id_tanque === id) b.id_tanque = outroTanque.id_tanque;
+            });
+          }
+
+          salvarDadosLocal();
+          resetarFormTanque();
+          renderizarListaTanques();
+          if (AppState.selectedBlockId) abrirPainelInspecao(AppState.selectedBlockId);
+          mostrarToast(`Tanque "${t.nome}" excluído com sucesso!`, "success");
+        });
+      });
+    }
+
+    btnCancelar?.addEventListener("click", resetarFormTanque);
+
+    btnSalvar?.addEventListener("click", () => {
+      if (!verificarPermissaoEdicao(true)) return;
+      const nome = inputNome?.value.trim();
+      const volume = parseFloat(inputVolume?.value);
+      const setor = selectSetor?.value || "esquerdo";
+      const editId = inputEditId?.value.trim();
+
+      if (!nome) {
+        mostrarToast("Informe o nome ou identificação do tanque.", "warning");
+        inputNome?.focus();
+        return;
+      }
+      if (isNaN(volume) || volume <= 0) {
+        mostrarToast("Informe um volume válido em litros (ex: 5000).", "warning");
+        inputVolume?.focus();
+        return;
+      }
+
+      if (editId) {
+        const t = AppState.tanques.find(item => item.id_tanque === editId);
+        if (t) {
+          t.nome = nome;
+          t.volume_litros = volume;
+          t.setor = setor;
+          mostrarToast(`Tanque "${nome}" atualizado!`, "success");
+        }
+      } else {
+        const novoId = `TANQUE-${Date.now().toString(36).toUpperCase()}`;
+        AppState.tanques.push({
+          id_tanque: novoId,
+          nome: nome,
+          volume_litros: volume,
+          setor: setor
+        });
+        mostrarToast(`Tanque "${nome}" cadastrado com sucesso!`, "success");
+      }
+
+      salvarDadosLocal();
+      resetarFormTanque();
+      renderizarListaTanques();
+      if (AppState.selectedBlockId) abrirPainelInspecao(AppState.selectedBlockId);
+    });
+
+    document.getElementById("opt-tanques-config")?.addEventListener("click", () => {
+      fecharTodosDropdowns();
+      resetarFormTanque();
+      renderizarListaTanques();
+      modalTanques?.classList.add("open");
+    });
+  }
+
+  setupTanquesModal();
+
   // --- MODAL DE HISTÓRICO COMPLETO & GRÁFICOS ---
   document.getElementById("btn-open-history-modal")?.addEventListener("click", () => {
     if (!AppState.selectedBlockId) return;
@@ -2947,6 +3747,8 @@ function setupModaisEFormularios() {
 
     if (cicloAtivo) {
       cicloAtivo.status = "finalizado";
+      cicloAtivo.editado_localmente = true;
+      cicloAtivo._ultima_modificacao = Date.now();
       salvarDadosLocal();
       abrirPainelInspecao(idBloco);
       atualizarFiltros();
@@ -2959,6 +3761,24 @@ function setupModaisEFormularios() {
     } else {
       popularSelectsCulturas();
 
+      const bloco = AppState.blocos.find(b => b.id_bloco === idBloco);
+      const isGerm = bloco && bloco.tipo_bloco === "germinacao";
+
+      const titleCiclo = document.getElementById("title-modal-ciclo");
+      if (titleCiclo) {
+        titleCiclo.textContent = isGerm 
+          ? `🌱 Iniciar Germinação (Semeadura) - ${idBloco}` 
+          : `Iniciar Ciclo de Cultivo - ${idBloco}`;
+      }
+      const labelPlantio = document.getElementById("label-ciclo-data-plantio");
+      if (labelPlantio) labelPlantio.textContent = isGerm ? "Data da Semeadura:" : "Data do Plantio:";
+
+      const labelColheita = document.getElementById("label-ciclo-data-colheita");
+      if (labelColheita) labelColheita.textContent = isGerm ? "Previsão de Transplante / Emergência:" : "Previsão de Colheita:";
+
+      const btnSubmit = document.getElementById("btn-submit-novo-ciclo");
+      if (btnSubmit) btnSubmit.textContent = isGerm ? "🌱 Iniciar Germinação" : "Iniciar Plantio";
+
       const hoje = new Date().toISOString().split("T")[0];
       document.getElementById("ciclo-data-plantio").value = hoje;
 
@@ -2969,7 +3789,7 @@ function setupModaisEFormularios() {
         const opt = selectNovo.options[1];
         const nome = opt.getAttribute("data-nome") || opt.value;
         const variedade = opt.getAttribute("data-variedade") || "";
-        const dias = parseInt(opt.getAttribute("data-dias"), 10) || 30;
+        const dias = isGerm ? 5 : (parseInt(opt.getAttribute("data-dias"), 10) || 30);
 
         document.getElementById("ciclo-cultura").value = nome;
         document.getElementById("ciclo-variedade").value = variedade;
@@ -2977,7 +3797,8 @@ function setupModaisEFormularios() {
         const colheitaDefault = new Date(Date.now() + dias * 86400000).toISOString().split("T")[0];
         document.getElementById("ciclo-data-colheita").value = colheitaDefault;
       } else {
-        const colheitaDefault = new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
+        const dias = isGerm ? 5 : 30;
+        const colheitaDefault = new Date(Date.now() + dias * 86400000).toISOString().split("T")[0];
         document.getElementById("ciclo-data-colheita").value = colheitaDefault;
       }
 
@@ -2991,6 +3812,10 @@ function setupModaisEFormularios() {
     const opt = sel.selectedOptions[0];
     if (!opt || !sel.value) return;
 
+    const idBloco = AppState.selectedBlockId;
+    const bloco = AppState.blocos.find(b => b.id_bloco === idBloco);
+    const isGerm = bloco && bloco.tipo_bloco === "germinacao";
+
     if (sel.value === "__MANUAL__") {
       document.getElementById("ciclo-cultura").value = "";
       document.getElementById("ciclo-variedade").value = "";
@@ -2998,7 +3823,7 @@ function setupModaisEFormularios() {
     } else {
       const nome = opt.getAttribute("data-nome") || sel.value;
       const variedade = opt.getAttribute("data-variedade") || "";
-      const dias = parseInt(opt.getAttribute("data-dias"), 10) || 30;
+      const dias = isGerm ? 5 : (parseInt(opt.getAttribute("data-dias"), 10) || 30);
 
       document.getElementById("ciclo-cultura").value = nome;
       document.getElementById("ciclo-variedade").value = variedade;
@@ -3016,7 +3841,8 @@ function setupModaisEFormularios() {
 
     const idBloco = AppState.selectedBlockId;
     const bloco = AppState.blocos.find(b => b.id_bloco === idBloco);
-    const totalPlantas = bloco ? (bloco.total_furos || 192) : 192;
+    const isGerm = bloco && bloco.tipo_bloco === "germinacao";
+    const totalPlantas = bloco ? (bloco.total_furos || (isGerm ? (bloco.qtd_placas || 2) * (bloco.celulas_por_placa || 196) : 192)) : 192;
 
     const novoCiclo = {
       id_ciclo: `CICLO-${Date.now()}`,
@@ -3039,7 +3865,9 @@ function setupModaisEFormularios() {
     solicitarRedesenho();
     modalCiclo.classList.remove("open");
 
-    mostrarToast(`Novo ciclo de ${novoCiclo.cultura} iniciado na bancada ${idBloco}!`, "success");
+    const rotuloAcao = isGerm ? "Germinação" : "Novo ciclo";
+    const rotuloBloco = isGerm ? "no módulo" : "na bancada";
+    mostrarToast(`${rotuloAcao} de ${novoCiclo.cultura} iniciado ${rotuloBloco} ${idBloco}!`, "success");
 
     if (AppState.googleSheetsUrl) {
       await registrarAcaoRemota("iniciarCiclo", novoCiclo);
@@ -3066,8 +3894,18 @@ function setupModaisEFormularios() {
       document.getElementById("edit-ciclo-bloco-label").textContent = idBloco;
       document.getElementById("edit-ciclo-cultura").value = cicloAtivo.cultura;
       document.getElementById("edit-ciclo-variedade").value = cicloAtivo.variedade || "";
-      document.getElementById("edit-ciclo-data-plantio").value = cicloAtivo.data_plantio;
-      document.getElementById("edit-ciclo-data-colheita").value = cicloAtivo.data_prevista_colheita;
+
+      let dtPlantio = cicloAtivo.data_plantio || "";
+      if (typeof dtPlantio === "string" && dtPlantio.includes("T")) {
+        dtPlantio = dtPlantio.split("T")[0];
+      }
+      let dtColheita = cicloAtivo.data_prevista_colheita || "";
+      if (typeof dtColheita === "string" && dtColheita.includes("T")) {
+        dtColheita = dtColheita.split("T")[0];
+      }
+
+      document.getElementById("edit-ciclo-data-plantio").value = dtPlantio;
+      document.getElementById("edit-ciclo-data-colheita").value = dtColheita;
       document.getElementById("edit-ciclo-qtd-inicial").value = cicloAtivo.qtd_inicial || 192;
       document.getElementById("edit-ciclo-lote-nutritivo").value = cicloAtivo.lote_nutritivo || "";
 
@@ -3087,7 +3925,25 @@ function setupModaisEFormularios() {
 
       modalEditarCiclo.classList.add("open");
     } else {
-      // Se a bancada estiver vazia, abre Iniciar Plantio diretamente para aquela bancada
+      // Se a bancada estiver vazia, abre Iniciar Plantio / Germinação diretamente para aquela bancada
+      const bloco = AppState.blocos.find(b => b.id_bloco === idBloco);
+      const isGerm = bloco && bloco.tipo_bloco === "germinacao";
+
+      const titleCiclo = document.getElementById("title-modal-ciclo");
+      if (titleCiclo) {
+        titleCiclo.textContent = isGerm 
+          ? `🌱 Iniciar Germinação (Semeadura) - ${idBloco}` 
+          : `Iniciar Ciclo de Cultivo - ${idBloco}`;
+      }
+      const labelPlantio = document.getElementById("label-ciclo-data-plantio");
+      if (labelPlantio) labelPlantio.textContent = isGerm ? "Data da Semeadura:" : "Data do Plantio:";
+
+      const labelColheita = document.getElementById("label-ciclo-data-colheita");
+      if (labelColheita) labelColheita.textContent = isGerm ? "Previsão de Transplante / Emergência:" : "Previsão de Colheita:";
+
+      const btnSubmit = document.getElementById("btn-submit-novo-ciclo");
+      if (btnSubmit) btnSubmit.textContent = isGerm ? "🌱 Iniciar Germinação" : "Iniciar Plantio";
+
       const hoje = new Date().toISOString().split("T")[0];
       document.getElementById("ciclo-data-plantio").value = hoje;
       const selectNovo = document.getElementById("ciclo-cultura-select");
@@ -3096,7 +3952,10 @@ function setupModaisEFormularios() {
         const opt = selectNovo.options[1];
         document.getElementById("ciclo-cultura").value = opt.getAttribute("data-nome") || opt.value;
         document.getElementById("ciclo-variedade").value = opt.getAttribute("data-variedade") || "";
-        const dias = parseInt(opt.getAttribute("data-dias"), 10) || 30;
+        const dias = isGerm ? 5 : (parseInt(opt.getAttribute("data-dias"), 10) || 30);
+        document.getElementById("ciclo-data-colheita").value = new Date(Date.now() + dias * 86400000).toISOString().split("T")[0];
+      } else {
+        const dias = isGerm ? 5 : 30;
         document.getElementById("ciclo-data-colheita").value = new Date(Date.now() + dias * 86400000).toISOString().split("T")[0];
       }
       modalCiclo.classList.add("open");
@@ -3159,6 +4018,8 @@ function setupModaisEFormularios() {
     ciclo.data_plantio = novaDataPlantio;
     ciclo.data_prevista_colheita = novaDataColheita;
     ciclo.lote_nutritivo = novoLote;
+    ciclo.editado_localmente = true;
+    ciclo._ultima_modificacao = Date.now();
 
     salvarDadosLocal();
     abrirPainelInspecao(ciclo.id_bloco);
@@ -3264,6 +4125,146 @@ function setupModaisEFormularios() {
   });
 
   // --- COLHEITA / RETIRADA COM CONTROLE DE ESTOQUE ---
+  function popularDestinosTransplante(idBlocoOrigem) {
+    const sel = document.getElementById("transplante-destino-bancada");
+    if (!sel) return;
+    sel.innerHTML = "";
+
+    const cardAuto = document.getElementById("card-auto-iniciar-cultivo");
+    const checkAuto = document.getElementById("check-auto-iniciar-ciclo");
+    const labelTitulo = document.getElementById("label-auto-iniciar-titulo");
+    const labelSub = document.getElementById("label-auto-iniciar-sub");
+    const inputDestino = document.getElementById("colheita-destino");
+
+    const cicloOrigem = AppState.ciclos.find(c => c.id_bloco === idBlocoOrigem && c.status === "ativo");
+    const culturaOrigem = cicloOrigem ? cicloOrigem.cultura : "Mudas";
+    const variedadeOrigem = cicloOrigem && cicloOrigem.variedade ? ` (${cicloOrigem.variedade})` : "";
+
+    // 1. Berçários e Maternidades (Prioridade máxima de transplante)
+    const bancadasBercario = AppState.blocos.filter(b => 
+      b.id_bloco !== idBlocoOrigem && (b.tipo_bloco === "bercario" || b.tipo_bloco === "maternidade")
+    );
+
+    // 2. Bancadas Definitivas (Transplante direto para engorda)
+    const bancadasDefinitivas = AppState.blocos.filter(b => 
+      b.id_bloco !== idBlocoOrigem && b.tipo_bloco === "definitivo"
+    );
+
+    let primeiroVagoId = null;
+
+    if (bancadasBercario.length > 0) {
+      const groupBercario = document.createElement("optgroup");
+      groupBercario.label = "☘️ Berçários & Maternidades (Recomendado)";
+
+      bancadasBercario.forEach(b => {
+        const cicloAtivo = AppState.ciclos.find(c => c.id_bloco === b.id_bloco && c.status === "ativo");
+        const totalFuros = calcularTotalFuros(b);
+        const tipoLabel = b.tipo_bloco === "maternidade" ? "Maternidade" : "Berçário";
+        const opt = document.createElement("option");
+        opt.value = b.id_bloco;
+
+        if (!cicloAtivo) {
+          opt.textContent = `🟢 ${b.id_bloco} (${tipoLabel}) — VAGA [Capacidade: ${totalFuros} mudas]`;
+          opt.setAttribute("data-status", "vaga");
+          if (!primeiroVagoId) primeiroVagoId = b.id_bloco;
+        } else {
+          opt.textContent = `🟡 ${b.id_bloco} (${tipoLabel}) — EM CULTIVO (${cicloAtivo.cultura} • Restam ${cicloAtivo.qtd_restante} plantas)`;
+          opt.setAttribute("data-status", "ocupada");
+        }
+        groupBercario.appendChild(opt);
+      });
+      sel.appendChild(groupBercario);
+    }
+
+    if (bancadasDefinitivas.length > 0) {
+      const groupDefinitivo = document.createElement("optgroup");
+      groupDefinitivo.label = "🌱 Bancadas Definitivas (Transplante Direto)";
+
+      bancadasDefinitivas.forEach(b => {
+        const cicloAtivo = AppState.ciclos.find(c => c.id_bloco === b.id_bloco && c.status === "ativo");
+        const totalFuros = calcularTotalFuros(b);
+        const opt = document.createElement("option");
+        opt.value = b.id_bloco;
+
+        if (!cicloAtivo) {
+          opt.textContent = `🟢 ${b.id_bloco} (Definitiva) — VAGA [Capacidade: ${totalFuros} plantas]`;
+          opt.setAttribute("data-status", "vaga");
+          if (!primeiroVagoId) primeiroVagoId = b.id_bloco;
+        } else {
+          opt.textContent = `🟡 ${b.id_bloco} (Definitiva) — EM CULTIVO (${cicloAtivo.cultura} • Restam ${cicloAtivo.qtd_restante} plantas)`;
+          opt.setAttribute("data-status", "ocupada");
+        }
+        groupDefinitivo.appendChild(opt);
+      });
+      sel.appendChild(groupDefinitivo);
+    }
+
+    // Grupo Outro / Externo
+    const groupOutro = document.createElement("optgroup");
+    groupOutro.label = "📦 Outras Opções de Destino";
+    const optManual = document.createElement("option");
+    optManual.value = "manual";
+    optManual.textContent = "📦 Outro destino externo (Venda de mudas, descarte ou leito externo)";
+    groupOutro.appendChild(optManual);
+    sel.appendChild(groupOutro);
+
+    // Seleciona preferencialmente a primeira bancada vaga de berçário, ou o primeiro item
+    if (primeiroVagoId) {
+      sel.value = primeiroVagoId;
+    } else if (sel.options.length > 0) {
+      sel.selectedIndex = 0;
+    }
+
+    function atualizarEstadoDestino() {
+      const val = sel.value;
+      if (val === "manual") {
+        if (cardAuto) cardAuto.style.display = "none";
+        if (inputDestino) {
+          inputDestino.placeholder = "Ex: Venda de mudas para terceiros, Descarte, etc.";
+          if (inputDestino.value.startsWith("Transplante ➔")) {
+            inputDestino.value = "";
+          }
+        }
+        return;
+      }
+
+      const blocoDest = AppState.blocos.find(b => b.id_bloco === val);
+      if (!blocoDest) return;
+
+      const cicloDest = AppState.ciclos.find(c => c.id_bloco === val && c.status === "ativo");
+      const tipoLabel = blocoDest.tipo_bloco === "maternidade" 
+        ? "Maternidade" 
+        : blocoDest.tipo_bloco === "bercario" 
+          ? "Berçário" 
+          : "Bancada Definitiva";
+
+      if (!cicloDest) {
+        // Bancada VAGA: Exibe card para auto-iniciar ciclo
+        if (cardAuto) cardAuto.style.display = "block";
+        if (checkAuto) checkAuto.checked = true;
+        if (labelTitulo) {
+          labelTitulo.textContent = `🌱 Iniciar cultivo automaticamente em ${blocoDest.id_bloco} (${tipoLabel})`;
+        }
+        if (labelSub) {
+          labelSub.textContent = `Ativa a bancada ${blocoDest.id_bloco} com ${culturaOrigem}${variedadeOrigem}, alocando o lote imediatamente no croqui.`;
+        }
+        if (inputDestino) {
+          inputDestino.value = `Transplante ➔ ${blocoDest.id_bloco} (${tipoLabel})`;
+        }
+      } else {
+        // Bancada OCUPADA: apenas registra no histórico
+        if (cardAuto) cardAuto.style.display = "none";
+        if (checkAuto) checkAuto.checked = false;
+        if (inputDestino) {
+          inputDestino.value = `Transplante ➔ ${blocoDest.id_bloco} (Ocupada com ${cicloDest.cultura})`;
+        }
+      }
+    }
+
+    sel.onchange = atualizarEstadoDestino;
+    atualizarEstadoDestino();
+  }
+
   document.getElementById("btn-open-colheita-modal")?.addEventListener("click", () => {
     if (!verificarPermissaoEdicao()) return;
     if (!AppState.selectedBlockId) return;
@@ -3274,19 +4275,66 @@ function setupModaisEFormularios() {
 
     const total = cicloAtivo.qtd_inicial || bloco.total_furos || 192;
     const restante = cicloAtivo.qtd_restante !== undefined ? cicloAtivo.qtd_restante : total;
+    const isGerm = bloco.tipo_bloco === "germinacao";
 
-    document.getElementById("colheita-modal-bloco-id").textContent = `Bancada ${idBloco}`;
+    document.getElementById("colheita-modal-bloco-id").textContent = isGerm 
+      ? `Módulo Germinação ${idBloco}` 
+      : `Bancada ${idBloco}`;
     document.getElementById("colheita-modal-cultura").textContent = formatarNomeCultura(cicloAtivo.cultura, cicloAtivo.variedade);
-    document.getElementById("colheita-modal-disponivel").textContent = `${restante} plantas`;
+    document.getElementById("colheita-modal-disponivel").textContent = `${restante} ${isGerm ? "mudas disponíveis" : "plantas"}`;
+
+    const titleColheita = document.getElementById("title-modal-colheita");
+    if (titleColheita) {
+      titleColheita.innerHTML = isGerm 
+        ? "<span>🌿</span><span>Registrar Transplante de Mudas</span>" 
+        : "<span>🌾</span><span>Registrar Colheita / Retirada</span>";
+    }
+
+    const labelQtd = document.querySelector('label[for="colheita-qtd"]');
+    if (labelQtd) {
+      labelQtd.textContent = isGerm 
+        ? "Quantidade de mudas a transplantar para o berçário:" 
+        : "Quantidade a Colher / Retirar (plantas):";
+    }
 
     const inputQtd = document.getElementById("colheita-qtd");
     inputQtd.max = restante;
-    inputQtd.value = Math.min(50, restante);
+    inputQtd.value = isGerm ? restante : Math.min(50, restante);
 
     const now = new Date();
     const dataLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     document.getElementById("colheita-data-hora").value = dataLocal;
-    document.getElementById("colheita-check-finalizar").checked = restante <= 50;
+    document.getElementById("colheita-check-finalizar").checked = restante <= 50 || isGerm;
+
+    const secaoTransplante = document.getElementById("secao-destino-transplante");
+    const labelDestino = document.getElementById("label-colheita-destino");
+    const inputDestino = document.getElementById("colheita-destino");
+    const btnSubmitColheita = document.getElementById("btn-confirmar-colheita");
+    const labelFinalizar = document.getElementById("label-check-finalizar");
+
+    if (isGerm) {
+      if (secaoTransplante) secaoTransplante.style.display = "block";
+      if (labelDestino) labelDestino.textContent = "Observações Adicionais do Transplante:";
+      if (inputDestino) {
+        inputDestino.placeholder = "Ex: Mudas com 5 dias, raízes vigorosas, leito A";
+        inputDestino.required = false;
+      }
+      if (btnSubmitColheita) btnSubmitColheita.textContent = "🌿 Confirmar Transplante de Mudas";
+      if (labelFinalizar) labelFinalizar.textContent = "Liberar mesa de germinação após este transplante (Mesa Vaga)";
+      popularDestinosTransplante(idBloco);
+    } else {
+      if (secaoTransplante) secaoTransplante.style.display = "none";
+      if (labelDestino) labelDestino.textContent = "Destino / Cliente / Observação:";
+      if (inputDestino) {
+        inputDestino.placeholder = "Ex: Feira de Domingo, Mercado Central, Venda Direta";
+        inputDestino.required = true;
+        if (!inputDestino.value || inputDestino.value.startsWith("Transplante ➔")) {
+          inputDestino.value = "Feira de Domingo";
+        }
+      }
+      if (btnSubmitColheita) btnSubmitColheita.textContent = "Confirmar Colheita";
+      if (labelFinalizar) labelFinalizar.textContent = "Finalizar ciclo e liberar bancada após esta colheita (Bancada Vaga)";
+    }
 
     if (AppState.currentUser) {
       document.getElementById("colheita-responsavel").value = AppState.currentUser.nome;
@@ -3325,11 +4373,89 @@ function setupModaisEFormularios() {
     const cicloAtivo = AppState.ciclos.find(c => c.id_bloco === idBloco && c.status === "ativo");
     if (!cicloAtivo || !bloco) return;
 
+    const isGerm = bloco.tipo_bloco === "germinacao";
     const qtd = parseInt(document.getElementById("colheita-qtd").value, 10) || 0;
+    if (qtd <= 0) {
+      mostrarToast(`Informe uma quantidade válida de ${isGerm ? "mudas para transplantar" : "plantas para colher"}.`, "warning");
+      return;
+    }
+
+    // Segunda verificação de confirmação solicitada pelo usuário
+    const acaoNome = isGerm ? "o transplante" : "a colheita";
+    const unidadeNome = isGerm ? "muda(s)" : "planta(s)";
+    const blocoNome = isGerm ? `Módulo ${idBloco}` : `Bancada ${idBloco}`;
+    const confirmar = confirm(`Deseja realmente confirmar ${acaoNome} de ${qtd} ${unidadeNome} no ${blocoNome}?`);
+    if (!confirmar) return;
+
     const dataHora = document.getElementById("colheita-data-hora").value.replace("T", " ");
     const responsavel = document.getElementById("colheita-responsavel").value;
-    const destino = document.getElementById("colheita-destino").value;
+    let destino = document.getElementById("colheita-destino").value;
     const finalizar = document.getElementById("colheita-check-finalizar").checked;
+
+    let autoIniciadoMsg = "";
+
+    // Se for transplante de germinação e houver bancada destino selecionada com auto-início
+    if (isGerm) {
+      const selDestino = document.getElementById("transplante-destino-bancada")?.value;
+      const checkAuto = document.getElementById("check-auto-iniciar-ciclo")?.checked;
+
+      if (selDestino && selDestino !== "manual") {
+        const blocoDest = AppState.blocos.find(b => b.id_bloco === selDestino);
+        const cicloDestExistente = AppState.ciclos.find(c => c.id_bloco === selDestino && c.status === "ativo");
+        const tipoLabel = blocoDest ? (blocoDest.tipo_bloco === "maternidade" ? "Maternidade" : blocoDest.tipo_bloco === "bercario" ? "Berçário" : "Definitiva") : "";
+
+        if (!destino || destino.trim() === "") {
+          destino = `Transplante ➔ ${selDestino} (${tipoLabel})`;
+        }
+
+        if (blocoDest && !cicloDestExistente && checkAuto) {
+          const cultNome = cicloAtivo.cultura;
+          const varNome = cicloAtivo.variedade || "";
+          const itemCat = (AppState.catalogoCulturas || []).find(c => c.nome.toLowerCase() === cultNome.toLowerCase());
+          const diasTotal = itemCat ? (itemCat.ciclo_dias || 30) : 30;
+          const isBerc = (blocoDest.tipo_bloco === "bercario" || blocoDest.tipo_bloco === "maternidade");
+          const diasFase = isBerc ? Math.min(15, Math.max(7, Math.round(diasTotal * 0.4))) : diasTotal;
+
+          const dataPlantioDest = dataHora.slice(0, 10);
+          const dataColhDest = new Date(Date.now() + diasFase * 86400000).toISOString().split("T")[0];
+
+          const novoCicloDest = {
+            id_ciclo: `CICLO-${Date.now()}-TRANS`,
+            id_bloco: blocoDest.id_bloco,
+            cultura: cultNome,
+            variedade: varNome,
+            data_plantio: dataPlantioDest,
+            data_prevista_colheita: dataColhDest,
+            lote_nutritivo: isBerc
+              ? "Solução Berçário / Maternidade (EC 1.2 - 1.4 mS)"
+              : "Solução Definitiva (EC 1.6 - 1.8 mS)",
+            status: "ativo",
+            qtd_inicial: qtd,
+            qtd_restante: qtd,
+            colheitas: []
+          };
+          AppState.ciclos.push(novoCicloDest);
+
+          const novoTratoDest = {
+            id_trato: `TRATO-${Date.now()}-IN`,
+            id_bloco: blocoDest.id_bloco,
+            id_ciclo: novoCicloDest.id_ciclo,
+            data_hora: dataHora,
+            tipo_manejo: `🌱 Transplante Recebido de ${idBloco}`,
+            responsavel: responsavel,
+            observacoes: `Recebidas ${qtd} mudas de ${cultNome}${varNome ? ` (${varNome})` : ""} germinadas em espuma fenólica no módulo ${idBloco}.`
+          };
+          AppState.tratos.push(novoTratoDest);
+
+          autoIniciadoMsg = ` e iniciado cultivo ativo em ${blocoDest.id_bloco} (${tipoLabel})`;
+
+          if (AppState.googleSheetsUrl) {
+            await registrarAcaoRemota("iniciarCiclo", novoCicloDest);
+            await registrarAcaoRemota("registrarTrato", novoTratoDest);
+          }
+        }
+      }
+    }
 
     cicloAtivo.colheitas = cicloAtivo.colheitas || [];
     cicloAtivo.colheitas.push({
@@ -3342,27 +4468,30 @@ function setupModaisEFormularios() {
 
     const total = cicloAtivo.qtd_inicial || bloco.total_furos || 192;
     cicloAtivo.qtd_restante = Math.max(0, (cicloAtivo.qtd_restante !== undefined ? cicloAtivo.qtd_restante : total) - qtd);
+    cicloAtivo.editado_localmente = true;
+    cicloAtivo._ultima_modificacao = Date.now();
 
     const novoTratoColheita = {
       id_trato: `TRATO-COLH-${Date.now()}`,
       id_bloco: idBloco,
       id_ciclo: cicloAtivo.id_ciclo,
       data_hora: dataHora,
-      tipo_manejo: `🌾 Colheita: ${qtd} plantas`,
+      tipo_manejo: isGerm ? `🌿 Transplante: ${qtd} mudas` : `🌾 Colheita: ${qtd} plantas`,
       responsavel: responsavel,
-      observacoes: `Destino: ${destino}. Restam ${cicloAtivo.qtd_restante} plantas na bancada.`
+      observacoes: `Destino: ${destino}. Restam ${cicloAtivo.qtd_restante} ${isGerm ? "mudas" : "plantas"} no leito.`
     };
     AppState.tratos.push(novoTratoColheita);
 
     if (finalizar || cicloAtivo.qtd_restante === 0) {
       cicloAtivo.status = "finalizado";
       cicloAtivo.data_colheita_real = dataHora.slice(0, 10);
-      mostrarToast(`Colheita de ${qtd} plantas registrada! Bancada ${idBloco} desocupada e liberada para novo plantio.`, "success");
+      mostrarToast(`${isGerm ? "Transplante" : "Colheita"} de ${qtd} ${unidadeNome} registrado${autoIniciadoMsg}! ${blocoNome} desocupado e liberado.`, "success");
     } else {
-      mostrarToast(`Colheita de ${qtd} plantas registrada! Restam ${cicloAtivo.qtd_restante} plantas na bancada ${idBloco}.`, "success");
+      mostrarToast(`${isGerm ? "Transplante" : "Colheita"} de ${qtd} ${unidadeNome} registrado${autoIniciadoMsg}! Restam ${cicloAtivo.qtd_restante} ${unidadeNome} no ${blocoNome}.`, "success");
     }
 
     salvarDadosLocal();
+    modalColheita?.classList.remove("open");
     abrirPainelInspecao(idBloco);
     if (document.getElementById("modal-historico-graficos")?.classList.contains("open")) {
       abrirModalHistoricoEGraficos(idBloco);
@@ -3372,17 +4501,27 @@ function setupModaisEFormularios() {
 
     if (AppState.googleSheetsUrl) {
       await registrarAcaoRemota("registrarTrato", novoTratoColheita);
+      if (finalizar || cicloAtivo.qtd_restante === 0) {
+        await registrarAcaoRemota("finalizarCiclo", { id_ciclo: cicloAtivo.id_ciclo, id_bloco: idBloco });
+      } else {
+        await registrarAcaoRemota("atualizarCiclo", cicloAtivo);
+      }
     }
   });
 
   // --- CONFIGURAÇÃO DA ÁREA ---
-  document.getElementById("btn-config-area").addEventListener("click", () => {
+  function abrirModalConfigArea() {
     if (!verificarPermissaoEdicao(true)) return;
     document.getElementById("area-nome").value = AppState.area.nome;
     document.getElementById("area-comprimento").value = AppState.area.comprimento_m;
     document.getElementById("area-largura").value = AppState.area.largura_m;
     document.getElementById("area-corredor").value = AppState.area.largura_corredor_m;
     modalArea.classList.add("open");
+  }
+  document.getElementById("btn-config-area")?.addEventListener("click", abrirModalConfigArea);
+  document.getElementById("opt-config-area")?.addEventListener("click", () => {
+    fecharTodosDropdowns();
+    abrirModalConfigArea();
   });
 
   document.getElementById("form-config-area").addEventListener("submit", e => {
@@ -3399,9 +4538,14 @@ function setupModaisEFormularios() {
   });
 
   // --- GOOGLE SHEETS ---
-  document.getElementById("btn-sheets-sync").addEventListener("click", () => {
+  function abrirModalSheetsConfig() {
     document.getElementById("sheets-url").value = AppState.googleSheetsUrl;
     modalSheets.classList.add("open");
+  }
+  document.getElementById("btn-sheets-sync")?.addEventListener("click", abrirModalSheetsConfig);
+  document.getElementById("opt-open-sheets-config")?.addEventListener("click", () => {
+    fecharTodosDropdowns();
+    abrirModalSheetsConfig();
   });
 
   document.getElementById("form-sheets").addEventListener("submit", e => {
@@ -3898,9 +5042,79 @@ async function sincronizarComSheets(feedbackVisual = false) {
         AppState.blocos = payload.blocos;
       }
       if (payload.ciclos && Array.isArray(payload.ciclos)) {
-        AppState.ciclos = payload.ciclos;
+        const ciclosMesclados = payload.ciclos.map(remoto => {
+          const local = AppState.ciclos.find(c =>
+            c.id_ciclo === remoto.id_ciclo ||
+            (c.id_bloco === remoto.id_bloco && c.status === "ativo") ||
+            (c.id_bloco === remoto.id_bloco && c.status === "finalizado" && c.colheitas && c.colheitas.length > 0)
+          );
+
+          const bloco = AppState.blocos.find(b => b.id_bloco === remoto.id_bloco);
+          const totalPadrao = bloco ? (bloco.total_furos || 192) : 192;
+          const qtdIni = (local && local.qtd_inicial) || remoto.qtd_inicial || totalPadrao;
+
+          // Preserva colheitas e saldo restante localmente
+          const colheitas = (local && Array.isArray(local.colheitas)) ? local.colheitas : (remoto.colheitas || []);
+          const qtdRestante = (local && local.qtd_restante !== undefined)
+            ? local.qtd_restante
+            : (remoto.qtd_restante !== undefined ? remoto.qtd_restante : qtdIni);
+
+          // Normaliza datas para YYYY-MM-DD
+          let dataPlantio = remoto.data_plantio;
+          if (typeof dataPlantio === "string" && dataPlantio.includes("T")) {
+            dataPlantio = dataPlantio.split("T")[0];
+          }
+          let dataColheita = remoto.data_prevista_colheita;
+          if (typeof dataColheita === "string" && dataColheita.includes("T")) {
+            dataColheita = dataColheita.split("T")[0];
+          }
+
+          // Se o ciclo local foi editado e tem data válida, prioriza a edição local
+          if (local && local.editado_localmente && local.data_plantio) {
+            dataPlantio = local.data_plantio;
+          }
+          if (local && local.editado_localmente && local.data_prevista_colheita) {
+            dataColheita = local.data_prevista_colheita;
+          }
+
+          // Se a colheita finalizou o ciclo localmente, preserva status finalizado
+          let statusFinal = remoto.status || "ativo";
+          if (local && local.status === "finalizado" && (qtdRestante === 0 || colheitas.length > 0)) {
+            statusFinal = "finalizado";
+          }
+
+          return {
+            ...remoto,
+            cultura: (local && local.editado_localmente && local.cultura) ? local.cultura : (remoto.cultura || ""),
+            variedade: (local && local.editado_localmente && local.variedade !== undefined) ? local.variedade : (remoto.variedade || ""),
+            data_plantio: dataPlantio || (local ? local.data_plantio : ""),
+            data_prevista_colheita: dataColheita || (local ? local.data_prevista_colheita : ""),
+            lote_nutritivo: (local && local.editado_localmente && local.lote_nutritivo) ? local.lote_nutritivo : (remoto.lote_nutritivo || ""),
+            qtd_inicial: qtdIni,
+            qtd_restante: qtdRestante,
+            colheitas: colheitas,
+            status: statusFinal,
+            editado_localmente: local ? local.editado_localmente : false
+          };
+        });
+
+        // Inclui ciclos que foram criados localmente e ainda não constam na planilha
+        AppState.ciclos.forEach(local => {
+          if (!ciclosMesclados.some(m => m.id_ciclo === local.id_ciclo)) {
+            ciclosMesclados.push(local);
+          }
+        });
+
+        AppState.ciclos = ciclosMesclados;
       }
+
       if (payload.tratos && Array.isArray(payload.tratos)) {
+        const idsRemotos = new Set(payload.tratos.map(t => t.id_trato));
+        AppState.tratos.forEach(localTrato => {
+          if (!idsRemotos.has(localTrato.id_trato)) {
+            payload.tratos.push(localTrato);
+          }
+        });
         AppState.tratos = payload.tratos;
       }
       if (payload.usuarios && Array.isArray(payload.usuarios)) {
@@ -3951,12 +5165,13 @@ const fecharDropdownAdd = fecharTodosDropdowns;
 
 function exportarBackupJSON() {
   const backup = {
-    versao: "3.0",
+    versao: "3.1",
     exportado_em: new Date().toISOString(),
     area: AppState.area,
     blocos: AppState.blocos,
     ciclos: AppState.ciclos,
-    tratos: AppState.tratos
+    tratos: AppState.tratos,
+    tanques: AppState.tanques
   };
   const jsonStr = JSON.stringify(backup, null, 2);
   const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8" });
@@ -3995,6 +5210,10 @@ function importarBackupJSON(event) {
       if (conteudo.tratos && Array.isArray(conteudo.tratos)) {
         AppState.tratos = conteudo.tratos;
       }
+      if (conteudo.tanques && Array.isArray(conteudo.tanques)) {
+        AppState.tanques = conteudo.tanques;
+      }
+      sincronizarTanquesBancadas();
 
       salvarDadosLocal();
       atualizarFiltros();
@@ -4041,7 +5260,7 @@ function setupFiltrosEControles() {
     }
   });
 
-  // Botão Inspecionar Padrão
+  // Botão Inspecionar Padrão (legado/fallback)
   document.getElementById("tool-select")?.addEventListener("click", () => {
     fecharTodosDropdowns();
     definirFerramentaAtiva("select");
@@ -4059,7 +5278,19 @@ function setupFiltrosEControles() {
     });
   }
 
-  // Dropdown Menu: Salvar & Backup
+  // Dropdown Menu: Projeto (Salvar, Backup, Importar, Sheets, Dimensões e Tema)
+  const dropdownProjeto = document.getElementById("dropdown-projeto");
+  const btnMenuProjeto = document.getElementById("btn-menu-projeto");
+  if (btnMenuProjeto && dropdownProjeto) {
+    btnMenuProjeto.addEventListener("click", e => {
+      e.stopPropagation();
+      const jaAberto = dropdownProjeto.classList.contains("open");
+      fecharTodosDropdowns();
+      if (!jaAberto) dropdownProjeto.classList.add("open");
+    });
+  }
+
+  // Compatibilidade legada com dropdown-salvar
   const dropdownSalvar = document.getElementById("dropdown-salvar");
   const btnSaveMenu = document.getElementById("btn-save-menu");
   if (btnSaveMenu && dropdownSalvar) {
@@ -4078,7 +5309,7 @@ function setupFiltrosEControles() {
     }
   });
 
-  // User Session Widget Dropdown
+  // User Session Widget Dropdown (Discreto)
   const userWidget = document.getElementById("user-session-widget");
   const btnUserAuth = document.getElementById("btn-user-auth");
   if (btnUserAuth && userWidget) {
@@ -4130,6 +5361,12 @@ function setupFiltrosEControles() {
     definirFerramentaAtiva("add_bercario");
   });
 
+  document.getElementById("opt-add-germinacao")?.addEventListener("click", () => {
+    fecharTodosDropdowns();
+    if (!verificarPermissaoEdicao()) return;
+    definirFerramentaAtiva("add_germinacao");
+  });
+
   document.getElementById("opt-espelhar-lado")?.addEventListener("click", () => {
     fecharTodosDropdowns();
     if (!verificarPermissaoEdicao()) return;
@@ -4142,7 +5379,7 @@ function setupFiltrosEControles() {
     espelharBancadasEsquerdaParaDireita();
   });
 
-  // Botões Diretos da Navbar: Salvar Projeto (.json) e Abrir Projeto
+  // Botões do menu Projeto / Backup
   document.getElementById("btn-save-project")?.addEventListener("click", () => {
     salvarDadosLocal();
     exportarBackupJSON();
@@ -4152,7 +5389,6 @@ function setupFiltrosEControles() {
     document.getElementById("input-file-json")?.click();
   });
 
-  // Itens do menu Salvar & Backup
   document.getElementById("opt-save-local")?.addEventListener("click", async () => {
     fecharTodosDropdowns();
     salvarDadosLocal();
@@ -4180,14 +5416,17 @@ function setupFiltrosEControles() {
     modalSheets.classList.add("open");
   });
 
-  // Banner Flutuante: Botão Girar
-  document.getElementById("banner-btn-rotate")?.addEventListener("click", alternarOrientacao);
-
-  // Alternância de Tema Claro / Escuro
-  document.getElementById("btn-theme-toggle").addEventListener("click", () => {
+  // Alternância de Tema Claro / Escuro (Menu Projeto e Legado)
+  function alternarTemaVisual() {
+    fecharTodosDropdowns();
     const novoTema = AppState.theme === "dark" ? "light" : "dark";
     aplicarTema(novoTema);
-  });
+  }
+  document.getElementById("opt-theme-toggle")?.addEventListener("click", alternarTemaVisual);
+  document.getElementById("btn-theme-toggle")?.addEventListener("click", alternarTemaVisual);
+
+  // Banner Flutuante: Botão Girar
+  document.getElementById("banner-btn-rotate")?.addEventListener("click", alternarOrientacao);
 
   // Controles de Câmera
   document.getElementById("btn-zoom-in").addEventListener("click", () => {
@@ -4265,7 +5504,11 @@ function definirFerramentaAtiva(tool) {
       ? "+ Definitivo"
       : tool === "add_maternidade"
         ? "+ Maternidade"
-        : "+ Berçário";
+        : tool === "add_bercario"
+          ? "+ Berçário"
+          : tool === "add_germinacao"
+            ? "+ Germinação"
+            : tool;
 
   document.getElementById("info-mode").textContent = modeLabel;
 
@@ -4344,6 +5587,7 @@ window.addEventListener("DOMContentLoaded", () => {
   carregarGestorConfigLocal();
   carregarUsuariosLocal();
   carregarSessaoUsuario();
+  sincronizarTanquesBancadas();
   setupFiltrosEControles();
   setupModaisEFormularios();
   registrarEventosCanvas();
