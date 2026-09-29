@@ -83,9 +83,11 @@ const AppState = {
     setor: "ALL"
   },
 
-  // Integração Google Sheets
+  // Integração Google Sheets & Fila Offline
   googleSheetsUrl: localStorage.getItem("hidro_sheets_url") || "",
   isSyncing: false,
+  filaOffline: [],
+  processandoFila: false,
 
   // Autenticação, Controle de Acesso (RBAC) e Criptografia
   currentUser: null, // null (Visitante / Somente Leitura) | { id_usuario, nome, papel: "gestor" | "operador" }
@@ -5564,10 +5566,70 @@ function setupModaisEFormularios() {
 }
 
 // ==========================================================================
-// 13. INTEGRAÇÃO ASSÍNCRONA COM GOOGLE APPS SCRIPT (SHEETS)
+// 13. INTEGRAÇÃO ASSÍNCRONA COM GOOGLE APPS SCRIPT (SHEETS) & FILA OFFLINE
 // ==========================================================================
+function carregarFilaOffline() {
+  const salvo = localStorage.getItem("hidro_fila_offline_v1");
+  if (salvo) {
+    try {
+      AppState.filaOffline = JSON.parse(salvo) || [];
+    } catch (_) {
+      AppState.filaOffline = [];
+    }
+  }
+}
+
+function salvarFilaOffline() {
+  localStorage.setItem("hidro_fila_offline_v1", JSON.stringify(AppState.filaOffline));
+}
+
+/**
+ * Processa a fila de ações acumuladas enquanto o dispositivo esteve offline
+ */
+async function processarFilaOffline() {
+  if (!AppState.googleSheetsUrl || !navigator.onLine || !AppState.filaOffline || AppState.filaOffline.length === 0) return;
+  if (AppState.processandoFila) return;
+  AppState.processandoFila = true;
+
+  let sincronizados = 0;
+  while (AppState.filaOffline.length > 0) {
+    const item = AppState.filaOffline[0];
+    try {
+      const resp = await fetch(AppState.googleSheetsUrl, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: item.action, data: item.data })
+      });
+      if (resp.ok) {
+        AppState.filaOffline.shift();
+        salvarFilaOffline();
+        sincronizados++;
+      } else {
+        break; // Interrompe e aguarda próxima janela de conexão
+      }
+    } catch (e) {
+      break; // Conexão oscilando
+    }
+  }
+
+  AppState.processandoFila = false;
+  if (sincronizados > 0) {
+    mostrarToast(`📶 ${sincronizados} registro(s) pendente(s) sincronizado(s) com a planilha Google!`, "success");
+    atualizarBadgeInfo();
+  }
+}
+
 async function registrarAcaoRemota(acao, payload) {
   if (!AppState.googleSheetsUrl) return null;
+
+  // Se o navegador estiver offline, salva diretamente na fila offline persistente
+  if (!navigator.onLine) {
+    AppState.filaOffline.push({ action: acao, data: payload, data_criacao: new Date().toISOString() });
+    salvarFilaOffline();
+    console.warn(`Dispositivo offline. Ação '${acao}' adicionada à fila de sincronização.`);
+    return { status: "queued", message: "Ação salva na fila offline" };
+  }
 
   try {
     const resposta = await fetch(AppState.googleSheetsUrl, {
@@ -5580,15 +5642,26 @@ async function registrarAcaoRemota(acao, payload) {
     if (resJson && resJson.timestamp) {
       AppState.lastServerTimestamp = Number(resJson.timestamp);
     }
+    // Aproveita o canal aberto para esvaziar qualquer item pendente na fila
+    if (AppState.filaOffline && AppState.filaOffline.length > 0) {
+      processarFilaOffline();
+    }
     return resJson;
   } catch (erro) {
-    console.error("Falha na sincronização com Google Sheets:", erro);
-    return null;
+    console.warn(`Falha na conexão com Google Sheets. Salvando '${acao}' na fila offline:`, erro);
+    AppState.filaOffline.push({ action: acao, data: payload, data_criacao: new Date().toISOString() });
+    salvarFilaOffline();
+    return { status: "queued", message: "Ação salva na fila offline" };
   }
 }
 
 async function sincronizarComSheets(feedbackVisual = false) {
   if (!AppState.googleSheetsUrl) return;
+
+  // Antes de ler, envia primeiro os registros que foram criados offline
+  if (navigator.onLine && AppState.filaOffline && AppState.filaOffline.length > 0) {
+    await processarFilaOffline();
+  }
 
   const dot = document.getElementById("sync-dot");
   const label = document.getElementById("sync-label");
@@ -7463,6 +7536,7 @@ window.addEventListener("DOMContentLoaded", () => {
   carregarCatalogoCulturas();
   carregarGestorConfigLocal();
   carregarUsuariosLocal();
+  carregarFilaOffline();
   carregarSessaoUsuario();
   sincronizarTanquesBancadas();
   carregarTarefasLocal();
@@ -7480,6 +7554,13 @@ window.addEventListener("DOMContentLoaded", () => {
   if (AppState.googleSheetsUrl) {
     sincronizarComSheets(false);
   }
+
+  // Sincronização automática ao restabelecer conexão com a internet
+  window.addEventListener("online", () => {
+    mostrarToast("📶 Conexão de internet restabelecida! Sincronizando dados pendentes...", "info");
+    processarFilaOffline();
+    sincronizarComSheets();
+  });
 
   // Monitoramento inteligente de alterações remotas via verificação periódica de timestamp (sem LockService)
   window.addEventListener("focus", () => {
