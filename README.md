@@ -1,12 +1,5 @@
 # HidroManager 🌱 - Sistema de Gestão Hidropônica NFT
 
-![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
-![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
-![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
-![Google Sheets](https://img.shields.io/badge/Google_Sheets-34A853?style=for-the-badge&logo=google-sheets&logoColor=white)
-![Google Apps Script](https://img.shields.io/badge/Google_Apps_Script-4285F4?style=for-the-badge&logo=google&logoColor=white)
-![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-222222?style=for-the-badge&logo=github&logoColor=white)
-
 > **Sistema web profissional para mapeamento espacial, monitoramento de ciclos, controle de colheitas e gestão de equipe em estufas hidropônicas NFT, com integração em nuvem gratuita via Google Sheets.**
 
 ---
@@ -20,7 +13,6 @@
 6. [Estrutura do Banco de Dados](#-estrutura-do-banco-de-dados)
 7. [Segurança e Controle de Acesso](#-segurança-e-controle-de-acesso)
 8. [Atalhos e Operação do Croqui](#-atalhos-e-operação-do-croqui)
-9. [Publicação no GitHub Pages](#-publicação-no-github-pages)
 
 ---
 
@@ -123,19 +115,31 @@ Para conectar o sistema a uma planilha do Google e ter persistência em nuvem:
 
 ## 🗄️ Estrutura do Banco de Dados
 
-A planilha Google criada pelo script organiza os dados em 5 abas padronizadas:
+A planilha Google criada pelo script organiza os dados em 7 abas padronizadas:
 
 | Aba | Descrição | Principais Colunas |
 | :--- | :--- | :--- |
 | **`Areas`** | Dimensões e parâmetros da estufa | `id_area`, `nome`, `comprimento_m`, `largura_m`, `largura_corredor_m` |
 | **`Blocos`** | Bancadas físicas cadastradas no croqui | `id_bloco`, `tipo_bloco`, `setor`, `pos_x_m`, `pos_y_m`, `qtd_perfis`, `total_furos` |
-| **`Ciclos_Cultivo`** | Lotes de cultivo ativos e histórico | `id_ciclo`, `id_bloco`, `cultura`, `data_plantio`, `qtd_inicial`, `qtd_restante`, `colheitas_json` |
+| **`Ciclos_Cultivo`** | Lotes de cultivo ativos e histórico | `id_ciclo`, `id_bloco`, `cultura`, `data_plantio`, `data_prevista_colheita`, `lote_nutritivo`, `status`, `fase_atual`, `lote_rastreabilidade` |
 | **`Tratos_Culturais`** | Histórico de adubações e manejos | `id_trato`, `id_bloco`, `id_ciclo`, `data_hora`, `tipo_manejo`, `responsavel`, `observacoes` |
 | **`Usuarios`** | Credenciais criptografadas e e-mail | `id_usuario`, `nome_exibicao`, `papel`, `dados_codificados`, `email_recuperacao` |
+| **`Tarefas`** | Ordens de serviço e transplantes | `id_tarefa`, `tipo`, `titulo`, `cultura`, `quantidade`, `destino`, `bancada_sugerida`, `prazo_data`, `prioridade`, `status` |
+| **`Alertas`** | Chamados e avisos da equipe de campo | `id_alerta`, `categoria`, `descricao`, `local`, `status`, `criado_por`, `resolvido_por` |
 
 ---
 
 ## 🔒 Segurança e Controle de Acesso
+
+### 🔑 Credenciais Padrão de Primeiro Acesso
+
+Ao abrir o sistema pela primeira vez ou após redefinir os dados locais, utilize as seguintes credenciais para acessar o painel administrativo:
+
+| Perfil | Identificação no Login | Senha Inicial Padrão | Chave Secreta Padrão | Observações |
+| :--- | :--- | :---: | :---: | :--- |
+| **Gestor Geral** 👑 | Selecionar `Gestor Geral` | **`admin123`** | `HIDRO-SEC-2026` | Acesso completo a configurações, estufa, catálogo, ordens de serviço e equipe. **Altere sua senha no primeiro acesso** em **⚙️ Opções ➔ Painel do Gestor**. |
+| **Visitante** 👁️ | Selecionar `Visitante` | *(Sem senha)* | — | Modo somente leitura para visualização do croqui e monitoramento. |
+| **Operador** 👨‍🌾 | Selecionar Nome do Colaborador | *(Criada pelo Gestor)* | — | Cadastrado diretamente pelo Gestor no painel administrativo para registro de tarefas e colheitas. |
 
 * **Criptografia Simétrica Reversível**: Os operadores cadastrados pelo Gestor têm suas credenciais cifradas via XOR compatível com UTF-8 Base64 utilizando o **Código Secreto de Criptografia**. Terceiros com acesso visual à planilha só visualizam códigos indecifráveis.
 * **Alteração de Código a Qualquer Momento**: O Gestor pode alterar a chave de criptografia quando desejar; o sistema re-codifica todas as senhas da equipe e atualiza a planilha automaticamente.
@@ -156,26 +160,6 @@ A planilha Google criada pelo script organiza os dados em 5 abas padronizadas:
 | **Cancelar Ação** | Pressione **`Esc`** |
 | **Inspecionar Bancada** | Clique sobre a bancada no croqui para abrir o painel lateral de ações |
 
----
-
-## 🌐 Publicação no GitHub Pages
-
-Para colocar o seu sistema no ar gratuitamente em seu próprio domínio GitHub:
-
-1. Suba os arquivos deste repositório para sua conta no GitHub:
-   ```bash
-   git init
-   git add .
-   git commit -m "HidroManager: Versão Inicial"
-   git branch -M main
-   git remote add origin https://github.com/SEU-USUARIO/SEU-REPOSITORIO.git
-   git push -u origin main
-   ```
-2. No repositório no GitHub, acesse **Settings ⚙️ ➔ Pages**.
-3. Em **Build and deployment ➔ Branch**, selecione **`main`** e pasta **`/(root)`**.
-4. Clique em **Save**.
-5. Em 1 a 2 minutos o link estará disponível:  
-   👉 `https://seu-usuario.github.io/seu-repositorio/`
 
 ---
 

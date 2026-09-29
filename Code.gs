@@ -17,22 +17,26 @@
  * 10. Cole essa URL nas configurações do sistema web (ícone do Google Sheets no cabeçalho).
  */
 
-// Nomes das 5 abas dedicadas
+// Nomes das 7 abas dedicadas
 const SHEET_NAMES = {
   AREAS: "Areas",
   BLOCOS: "Blocos",
   CICLOS: "Ciclos_Cultivo",
   TRATOS: "Tratos_Culturais",
-  USUARIOS: "Usuarios"
+  USUARIOS: "Usuarios",
+  TAREFAS: "Tarefas",
+  ALERTAS: "Alertas"
 };
 
 // Cabeçalhos padrão para cada aba
 const SCHEMAS = {
   [SHEET_NAMES.AREAS]: ["id_area", "nome", "tipo", "comprimento_m", "largura_m", "largura_corredor_m", "criado_em", "ultima_atualizacao"],
   [SHEET_NAMES.BLOCOS]: ["id_bloco", "id_area", "tipo_bloco", "setor", "pos_x_m", "pos_y_m", "largura_m", "comprimento_m", "qtd_perfis", "total_furos"],
-  [SHEET_NAMES.CICLOS]: ["id_ciclo", "id_bloco", "cultura", "variedade", "data_plantio", "data_prevista_colheita", "lote_nutritivo", "status"],
+  [SHEET_NAMES.CICLOS]: ["id_ciclo", "id_bloco", "cultura", "variedade", "data_plantio", "data_prevista_colheita", "lote_nutritivo", "status", "fase_atual", "lote_rastreabilidade"],
   [SHEET_NAMES.TRATOS]: ["id_trato", "id_bloco", "id_ciclo", "data_hora", "tipo_manejo", "responsavel", "observacoes"],
-  [SHEET_NAMES.USUARIOS]: ["id_usuario", "nome_exibicao", "papel", "dados_codificados", "email_recuperacao", "ultimo_acesso"]
+  [SHEET_NAMES.USUARIOS]: ["id_usuario", "nome_exibicao", "papel", "dados_codificados", "email_recuperacao", "ultimo_acesso"],
+  [SHEET_NAMES.TAREFAS]: ["id_tarefa", "tipo", "titulo", "cultura", "quantidade", "destino", "bancada_sugerida", "prazo_data", "prioridade", "status", "criado_por", "atribuido_para", "executado_por", "data_criacao", "data_conclusao", "id_bloco_executado", "observacoes", "bancada_origem", "lote_rastreabilidade"],
+  [SHEET_NAMES.ALERTAS]: ["id_alerta", "categoria", "descricao", "local", "status", "criado_por", "data_criacao", "resolvido_por", "data_resolucao", "observacao_resolucao"]
 };
 
 /**
@@ -57,7 +61,9 @@ function doGet(e) {
       blocos: lerDadosAba(ss.getSheetByName(SHEET_NAMES.BLOCOS), SCHEMAS[SHEET_NAMES.BLOCOS]),
       ciclos: lerDadosAba(ss.getSheetByName(SHEET_NAMES.CICLOS), SCHEMAS[SHEET_NAMES.CICLOS]),
       tratos: lerDadosAba(ss.getSheetByName(SHEET_NAMES.TRATOS), SCHEMAS[SHEET_NAMES.TRATOS]),
-      usuarios: lerDadosAba(ss.getSheetByName(SHEET_NAMES.USUARIOS), SCHEMAS[SHEET_NAMES.USUARIOS])
+      usuarios: lerDadosAba(ss.getSheetByName(SHEET_NAMES.USUARIOS), SCHEMAS[SHEET_NAMES.USUARIOS]),
+      tarefas: lerDadosAba(ss.getSheetByName(SHEET_NAMES.TAREFAS), SCHEMAS[SHEET_NAMES.TAREFAS]),
+      alertas: lerDadosAba(ss.getSheetByName(SHEET_NAMES.ALERTAS), SCHEMAS[SHEET_NAMES.ALERTAS])
     };
 
     return criarRespostaJSON({
@@ -123,6 +129,26 @@ function doPost(e) {
 
       case "solicitarSenhaOperador":
         retorno = solicitarSenhaOperador(ss, dados);
+        break;
+
+      case "criarTarefa":
+        criarTarefaRemota(ss, dados);
+        break;
+
+      case "concluirTarefa":
+        concluirTarefaRemota(ss, dados);
+        break;
+
+      case "cancelarTarefa":
+        cancelarTarefaRemota(ss, dados);
+        break;
+
+      case "criarAlerta":
+        criarAlertaRemoto(ss, dados);
+        break;
+
+      case "resolverAlerta":
+        resolverAlertaRemoto(ss, dados);
         break;
 
       default:
@@ -209,7 +235,9 @@ function iniciarCiclo(ss, c) {
     c.data_plantio,
     c.data_prevista_colheita,
     c.lote_nutritivo || "",
-    c.status || "ativo"
+    c.status || "ativo",
+    c.fase_atual || "crescimento",
+    c.lote_rastreabilidade || ""
   ]);
 }
 
@@ -436,3 +464,102 @@ function solicitarSenhaOperador(ss, dados) {
     return { status: "error", message: "Erro ao enviar e-mail: " + erro.toString() };
   }
 }
+
+/**
+ * Insere uma nova tarefa na aba Tarefas
+ */
+function criarTarefaRemota(ss, t) {
+  const sheet = ss.getSheetByName(SHEET_NAMES.TAREFAS);
+  sheet.appendRow([
+    t.id_tarefa,
+    t.tipo || "geral",
+    t.titulo || "",
+    t.cultura || "",
+    t.quantidade || 0,
+    t.destino || "",
+    t.bancada_sugerida || "",
+    t.prazo_data || "",
+    t.prioridade || "normal",
+    t.status || "pendente",
+    t.criado_por || "",
+    t.atribuido_para || "",
+    t.executado_por || "",
+    t.data_criacao || new Date().toISOString(),
+    t.data_conclusao || "",
+    t.id_bloco_executado || "",
+    t.observacoes || "",
+    t.bancada_origem || "",
+    t.lote_rastreabilidade || ""
+  ]);
+}
+
+/**
+ * Atualiza o status de uma tarefa para concluída
+ */
+function concluirTarefaRemota(ss, t) {
+  const sheet = ss.getSheetByName(SHEET_NAMES.TAREFAS);
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === t.id_tarefa) {
+      sheet.getRange(i + 1, 10).setValue("concluida"); // status
+      sheet.getRange(i + 1, 13).setValue(t.executado_por || ""); // executado_por
+      sheet.getRange(i + 1, 15).setValue(t.data_conclusao || new Date().toISOString()); // data_conclusao
+      if (t.id_bloco_executado) {
+        sheet.getRange(i + 1, 16).setValue(t.id_bloco_executado);
+      }
+      break;
+    }
+  }
+}
+
+/**
+ * Atualiza o status de uma tarefa para cancelada
+ */
+function cancelarTarefaRemota(ss, t) {
+  const sheet = ss.getSheetByName(SHEET_NAMES.TAREFAS);
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === t.id_tarefa) {
+      sheet.getRange(i + 1, 10).setValue("cancelada");
+      sheet.getRange(i + 1, 15).setValue(t.data_conclusao || new Date().toISOString());
+      break;
+    }
+  }
+}
+
+/**
+ * Insere um novo alerta na aba Alertas
+ */
+function criarAlertaRemoto(ss, a) {
+  const sheet = ss.getSheetByName(SHEET_NAMES.ALERTAS);
+  sheet.appendRow([
+    a.id_alerta,
+    a.categoria || "outro",
+    a.descricao || "",
+    a.local || "",
+    a.status || "aberto",
+    a.criado_por || "",
+    a.data_criacao || new Date().toISOString(),
+    a.resolvido_por || "",
+    a.data_resolucao || "",
+    a.observacao_resolucao || ""
+  ]);
+}
+
+/**
+ * Atualiza o status de um alerta para resolvido
+ */
+function resolverAlertaRemoto(ss, a) {
+  const sheet = ss.getSheetByName(SHEET_NAMES.ALERTAS);
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === a.id_alerta) {
+      sheet.getRange(i + 1, 5).setValue("resolvido");
+      sheet.getRange(i + 1, 8).setValue(a.resolvido_por || "");
+      sheet.getRange(i + 1, 9).setValue(a.data_resolucao || new Date().toISOString());
+      sheet.getRange(i + 1, 10).setValue(a.observacao_resolucao || "");
+      break;
+    }
+  }
+}
+

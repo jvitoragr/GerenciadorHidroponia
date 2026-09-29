@@ -1480,17 +1480,20 @@ body.dark-theme .tool-btn:hover {
 }
 
 .user-pill-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: 9999px;
-  padding: 4px 12px 4px 8px;
+  padding: 5px 11px;
   cursor: pointer;
   transition: all 0.2s ease;
   color: var(--text-primary);
   font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .user-pill-btn:hover {
@@ -1499,64 +1502,42 @@ body.dark-theme .tool-btn:hover {
 }
 
 .user-pill-btn.visitor {
-  border-color: rgba(148, 163, 184, 0.4);
+  border-color: rgba(148, 163, 184, 0.35);
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--text-secondary);
 }
 
-.user-pill-btn.operator {
-  border-color: rgba(16, 185, 129, 0.4);
+.user-pill-btn.visitor:hover {
+  border-color: var(--primary);
+  color: var(--text-primary);
   background: rgba(16, 185, 129, 0.08);
 }
 
+.user-pill-btn.operator {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
 .user-pill-btn.manager {
-  border-color: rgba(245, 158, 11, 0.45);
-  background: rgba(245, 158, 11, 0.09);
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
 }
 
 .user-badge-icon {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   line-height: 1;
 }
 
-.user-badge-details {
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-  line-height: 1.15;
-}
-
-.user-badge-details strong {
+.user-pill-name {
   font-size: 0.8rem;
-  color: var(--text-primary);
   font-weight: 600;
-  white-space: nowrap;
 }
 
-.user-badge-details small {
-  font-size: 0.68rem;
+.user-pill-chevron {
   color: var(--text-muted);
-}
-
-.user-action-tag {
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  padding: 2px 7px;
-  border-radius: 9999px;
-  background: var(--primary);
-  color: #ffffff;
-  margin-left: 4px;
-}
-
-.user-pill-btn.visitor .user-action-tag {
-  background: #64748b;
-}
-
-.user-pill-btn.operator .user-action-tag {
-  background: #10b981;
-}
-
-.user-pill-btn.manager .user-action-tag {
-  background: #f59e0b;
+  font-size: 0.65rem;
 }
 
 .operador-card-item {
@@ -1587,4 +1568,753 @@ body.dark-theme .tool-btn:hover {
   z-index: 10061 !important;
 }
 
+/* ==========================================================================
+   MODAL DE MANEJOS DA ESTUFA & HISTÓRICO
+   ========================================================================== */
+#modal-manejos-estufa {
+  z-index: 10040 !important;
+}
+
+#modal-manejos-estufa .modal-card {
+  z-index: 10041 !important;
+}
+
+.estufa-historico-item {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid #10b981;
+  border-radius: 4px;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.estufa-historico-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.estufa-historico-top strong {
+  color: var(--text-primary);
+  font-size: 0.78rem;
+}
+
+.estufa-historico-obs {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+/* ==========================================================================
+   MODAL DE TANQUES & RESERVATÓRIOS
+   ========================================================================== */
+#modal-tanques-config {
+  z-index: 10045 !important;
+}
+
+#modal-tanques-config .modal-card {
+  z-index: 10046 !important;
+}
+
+.tanque-card-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  gap: 12px;
+}
+
+.tanque-card-item:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: var(--bg-surface-elevated);
+}
+
+.tanque-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+
+.tanque-card-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.tanque-card-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.tanque-card-title {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.tanque-card-badge {
+  font-size: 0.68rem;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tanque-card-details {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tanque-detail-col {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.tanque-detail-label {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.tanque-detail-value {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.76rem;
+}
+
+.tanque-detail-value.bancadas-tag {
+  color: #10b981;
+  font-family: monospace;
+  font-size: 0.74rem;
+  background: rgba(16, 185, 129, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.tanque-detail-divider {
+  width: 1px;
+  height: 11px;
+  background: var(--border-subtle);
+}
+
+.tanque-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 72px;
+}
+
+.btn-tanque-action {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  padding: 3px 6px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.btn-tanque-action:hover {
+  border-color: var(--primary);
+  color: var(--text-primary);
+  background: var(--bg-surface-elevated);
+}
+
+.btn-tanque-delete:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+#estufa-campos-quimicos {
+  transition: opacity 0.25s ease, max-height 0.3s ease;
+}
+
+/* ==========================================================================
+   RESPONSIVIDADE DA TOP NAVBAR
+   ========================================================================== */
+@media (max-width: 768px) {
+  .top-navbar {
+    height: auto;
+    min-height: 52px;
+    padding: 6px 10px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .brand-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .brand-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .brand-info h1 {
+    font-size: 0.95rem;
+  }
+
+  .toolbar-actions {
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .tool-btn, .btn-primary, .user-pill-btn {
+    padding: 5px 9px;
+    font-size: 0.76rem;
+    gap: 4px;
+  }
+}
+
+
+/* ==========================================================================
+   MÓDULO DE TAREFAS & ALERTAS
+   ========================================================================== */
+
+/* Badge Contador na Navbar */
+.badge-tarefas {
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 2px var(--bg-surface);
+}
+
+.badge-pulse {
+  animation: badgePulse 1.8s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 2px var(--bg-surface); }
+  50% { transform: scale(1.15); box-shadow: 0 0 6px rgba(239, 68, 68, 0.5), 0 0 0 2px var(--bg-surface); }
+}
+
+/* Tabs do Modal de Tarefas */
+.tarefa-tab {
+  background: transparent;
+  border: none;
+  padding: 12px 18px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tarefa-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-elevated);
+}
+
+.tarefa-tab.active {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+}
+
+.tarefa-tab-count {
+  background: var(--bg-surface-elevated);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.tarefa-tab.active .tarefa-tab-count {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+/* Card de Tarefa com Tipografia Aumentada e Nítida */
+.tarefa-card {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 16px 18px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.tarefa-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+/* Barra de prioridade à esquerda */
+.tarefa-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 5px;
+  height: 100%;
+  border-radius: 12px 0 0 12px;
+}
+
+.tarefa-card.prioridade-urgente::before { background: #ef4444; }
+.tarefa-card.prioridade-atencao::before { background: #f59e0b; }
+.tarefa-card.prioridade-normal::before { background: #10b981; }
+
+.tarefa-card.status-concluida {
+  opacity: 0.72;
+  border-style: dashed;
+}
+
+.tarefa-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  gap: 12px;
+}
+
+.tarefa-card-titulo {
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.35;
+  flex: 1;
+}
+
+.tarefa-card-tipo-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.tarefa-tipo-colheita { background: rgba(234, 179, 8, 0.14); color: #d97706; border: 1px solid rgba(234, 179, 8, 0.3); }
+.tarefa-tipo-transplante { background: rgba(16, 185, 129, 0.14); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3); }
+.tarefa-tipo-semeadura { background: rgba(34, 197, 94, 0.14); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.3); }
+.tarefa-tipo-nutricao { background: rgba(59, 130, 246, 0.14); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.3); }
+.tarefa-tipo-manutencao { background: rgba(139, 92, 246, 0.14); color: #7c3aed; border: 1px solid rgba(139, 92, 246, 0.3); }
+.tarefa-tipo-geral { background: rgba(107, 114, 128, 0.14); color: #4b5563; border: 1px solid rgba(107, 114, 128, 0.3); }
+
+.tarefa-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.tarefa-card-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tarefa-card-meta .tarefa-meta-quantidade {
+  font-weight: 800;
+  font-size: 0.94rem;
+  color: #2563eb;
+  background: rgba(59, 130, 246, 0.10);
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.tarefa-card-meta .tarefa-meta-destino {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tarefa-card-meta .tarefa-meta-prazo {
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.tarefa-meta-prazo.atrasada {
+  color: #ef4444 !important;
+  font-weight: 800 !important;
+}
+
+.tarefa-meta-prazo.hoje {
+  color: #d97706 !important;
+  font-weight: 800 !important;
+}
+
+.tarefa-card-obs {
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border-left: 3px solid #3b82f6;
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin: 8px 0;
+  line-height: 1.35;
+}
+
+.tarefa-card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.tarefa-btn-realizar {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  border: none;
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.tarefa-btn-realizar:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.35);
+}
+
+.tarefa-btn-cancelar {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tarefa-btn-cancelar:hover {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+/* Alerta Card com Tipografia Aumentada */
+.alerta-card {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.alerta-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.alerta-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 5px;
+  height: 100%;
+  border-radius: 12px 0 0 12px;
+  background: #f59e0b;
+}
+
+.alerta-card.resolvido::before { background: #10b981; }
+.alerta-card.resolvido { opacity: 0.65; border-style: dashed; }
+
+.alerta-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  gap: 10px;
+}
+
+.alerta-cat-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.alerta-cat-insumo { background: rgba(245, 158, 11, 0.14); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3); }
+.alerta-cat-equipamento { background: rgba(139, 92, 246, 0.14); color: #7c3aed; border: 1px solid rgba(139, 92, 246, 0.3); }
+.alerta-cat-praga { background: rgba(239, 68, 68, 0.14); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.3); }
+.alerta-cat-outro { background: rgba(107, 114, 128, 0.14); color: #4b5563; border: 1px solid rgba(107, 114, 128, 0.3); }
+
+.alerta-descricao {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.alerta-meta {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.alerta-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.alerta-btn-resolver {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  border: none;
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.alerta-btn-resolver:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.35);
+}
+
+/* Drawer Lateral para Criação de Tarefas & Interação com Croqui */
+.drawer-lateral-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1200;
+  pointer-events: none; /* Permite interagir com o canvas ao lado! */
+  display: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.drawer-lateral-overlay.open {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.drawer-lateral-card {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 460px;
+  max-width: 95vw;
+  height: 100vh;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-subtle);
+  box-shadow: -10px 0 36px rgba(0, 0, 0, 0.28);
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto; /* Elementos internos do painel são clicáveis */
+  transform: translateX(100%);
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1201;
+}
+
+.drawer-lateral-overlay.open .drawer-lateral-card {
+  transform: translateX(0);
+}
+
+/* Componente Interativo de Local Sugerido */
+.local-sugerido-box {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.local-quick-actions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.local-quick-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.local-quick-btn:hover {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.local-chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 32px;
+  align-items: center;
+}
+
+.local-chip {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.local-chip-remove {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.local-chip-remove:hover {
+  color: #b91c1c;
+}
+
+.canvas-hint-box {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px dashed rgba(59, 130, 246, 0.35);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  color: #2563eb;
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Banner de modo de seleção assistida no croqui */
+.tarefa-selecao-banner {
+  position: fixed;
+  top: 62px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 6px 24px rgba(59, 130, 246, 0.35);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 90vw;
+  animation: bannerSlideIn 0.35s cubic-bezier(.22,1,.36,1);
+}
+
+.tarefa-selecao-banner button {
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.tarefa-selecao-banner button:hover {
+  background: rgba(255,255,255,0.35);
+}
+
+@keyframes bannerSlideIn {
+  0% { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+  100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* Responsivo para telas mobile */
+@media (max-width: 600px) {
+  .tarefa-tab {
+    padding: 8px 10px;
+    font-size: 0.75rem;
+  }
+
+  .tarefa-card-header {
+    flex-direction: column;
+  }
+
+  .tarefa-card-actions {
+    flex-wrap: wrap;
+  }
+
+  .tarefa-selecao-banner {
+    font-size: 0.78rem;
+    padding: 8px 14px;
+    flex-wrap: wrap;
+    text-align: center;
+    justify-content: center;
+  }
+}
 
