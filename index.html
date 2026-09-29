@@ -243,6 +243,20 @@
     <main class="canvas-viewport" id="canvas-viewport" role="region" aria-label="Croqui Interativo da Estufa">
       <canvas id="cropCanvas"></canvas>
 
+      <!-- 🛡️ Banner de Proteção: Modo Demonstração -->
+      <div id="demo-mode-banner" class="demo-mode-banner hidden" role="alert" aria-live="polite">
+        <div class="demo-banner-icon">🛡️</div>
+        <div class="demo-banner-content">
+          <strong>Modo Demonstração</strong>
+          <span>Estes são dados de exemplo. Sua planilha real está protegida — nenhum dado será enviado ao Sheets.</span>
+        </div>
+        <button type="button" id="btn-demo-connect" class="demo-banner-btn" title="Conectar ao Google Sheets para carregar seus dados reais">
+          ☁️ Conectar Sheets
+        </button>
+        <button type="button" id="btn-demo-dismiss" class="demo-banner-close" title="Fechar aviso" aria-label="Fechar aviso de demonstração">✕</button>
+      </div>
+
+
       <!-- Banner Flutuante de Inserção / Rotação Rápida -->
       <div id="canvas-insert-banner" class="canvas-insert-banner hidden" role="status">
         <span>Inserindo: <strong id="banner-tool-name">+ Bancada de Crescimento</strong></span>

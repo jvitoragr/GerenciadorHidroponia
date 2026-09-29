@@ -105,7 +105,12 @@ const AppState = {
   tarefas: [],
   alertas: [],
   tarefaEmExecucao: null, // ID da tarefa em modo de seleção assistida no croqui
-  modalNovaTarefaAberto: false // Indica se o drawer de criação de tarefas está aberto
+  modalNovaTarefaAberto: false, // Indica se o drawer de criação de tarefas está aberto
+
+  // 🛡️ PROTEÇÃO DE DADOS: indica se o sistema está rodando com dados de demonstração
+  // Quando TRUE, o layout NUNCA é enviado para a planilha (Download First)
+  // Vira FALSE apenas quando dados reais são carregados do localStorage ou baixados do Sheets
+  _dadosSaoDemonstracao: true
 };
 
 // ==========================================================================
@@ -446,6 +451,8 @@ function carregarDadosIniciais() {
         }
       }
       sincronizarTanquesBancadas();
+      // ✅ Dados reais carregados do localStorage — desbloqueia envio ao Sheets
+      AppState._dadosSaoDemonstracao = false;
       return;
     } catch (e) {
       console.warn("Erro ao carregar localStorage v3:", e);
@@ -634,7 +641,10 @@ function carregarDadosIniciais() {
   ];
 
   sincronizarTanquesBancadas();
-  salvarDadosLocal();
+  // ⚠️ Dados de demonstração — NÃO salvar no localStorage para não contaminar dados reais
+  // salvarDadosLocal() é propositalmente omitido aqui
+  AppState._dadosSaoDemonstracao = true;
+  console.info("[HidroManager] Modo Demonstração ativo. Conecte-se à planilha para carregar seus dados reais.");
 }
 
 function salvarDadosLocal() {
@@ -5126,6 +5136,7 @@ function setupModaisEFormularios() {
     AppState.googleSheetsUrl = url;
     localStorage.setItem("hidro_sheets_url", url);
     atualizarStatusConexao();
+    atualizarBannerDemo(); // 🛡️ Mostra banner de demo se URL configurada mas dados ainda são exemplo
     modalSheets.classList.remove("open");
     mostrarToast("Configuração do Google Sheets salva!", "success");
   });
@@ -5623,6 +5634,13 @@ async function processarFilaOffline() {
 async function registrarAcaoRemota(acao, payload) {
   if (!AppState.googleSheetsUrl) return null;
 
+  // 🛡️ TRAVA DE SEGURANÇA: Bloqueia envio de layout enquanto dados de demonstração estão ativos.
+  // Isso é a linha de defesa final contra sobrescrita acidental da planilha real.
+  if (acao === "salvarLayout" && AppState._dadosSaoDemonstracao) {
+    console.warn("[HidroManager] 🛡️ BLOQUEADO: salvarLayout cancelado — dados de demonstração ativos. Baixe os dados reais primeiro.");
+    return null;
+  }
+
   // Se o navegador estiver offline, salva diretamente na fila offline persistente
   if (!navigator.onLine) {
     AppState.filaOffline.push({ action: acao, data: payload, data_criacao: new Date().toISOString() });
@@ -5658,11 +5676,6 @@ async function registrarAcaoRemota(acao, payload) {
 async function sincronizarComSheets(feedbackVisual = false) {
   if (!AppState.googleSheetsUrl) return;
 
-  // Antes de ler, envia primeiro os registros que foram criados offline
-  if (navigator.onLine && AppState.filaOffline && AppState.filaOffline.length > 0) {
-    await processarFilaOffline();
-  }
-
   const dot = document.getElementById("sync-dot");
   const label = document.getElementById("sync-label");
 
@@ -5671,11 +5684,12 @@ async function sincronizarComSheets(feedbackVisual = false) {
   AppState.isSyncing = true;
 
   try {
-    await registrarAcaoRemota("salvarLayout", {
-      area: AppState.area,
-      blocos: AppState.blocos
-    });
-
+    // ════════════════════════════════════════════════════════════════
+    // 🛡️ PROTEÇÃO "DOWNLOAD FIRST": Baixa os dados reais da planilha
+    //    ANTES de qualquer envio. Só envia o layout depois que os dados
+    //    reais foram recebidos e AppState._dadosSaoDemonstracao = false.
+    //    Isso impede que dados de demonstração sobrescrevam a planilha.
+    // ════════════════════════════════════════════════════════════════
     const resp = await fetch(AppState.googleSheetsUrl, { method: "GET", mode: "cors" });
     if (resp.ok) {
       const respJson = await resp.json();
@@ -5792,12 +5806,27 @@ async function sincronizarComSheets(feedbackVisual = false) {
         AppState.lastServerTimestamp = Number(respJson.timestamp);
       }
 
+      // ✅ Dados reais recebidos da planilha — desbloqueia o envio de layout
+      AppState._dadosSaoDemonstracao = false;
+
       salvarDadosLocal();
       atualizarFiltros();
       solicitarRedesenho();
 
+      // 📤 Agora que temos dados reais, envia os dados offline pendentes e o layout atualizado
+      if (navigator.onLine && AppState.filaOffline && AppState.filaOffline.length > 0) {
+        await processarFilaOffline();
+      }
+
+      // Envia layout apenas com dados reais confirmados
+      await registrarAcaoRemota("salvarLayout", {
+        area: AppState.area,
+        blocos: AppState.blocos
+      });
+
       dot.className = "status-dot";
       label.textContent = "Sheets Conectado";
+      atualizarBannerDemo(); // 🛡️ Oculta banner de demo após receber dados reais
       if (feedbackVisual) mostrarToast("Sincronização com Google Sheets concluída!", "success");
     }
   } catch (erro) {
@@ -5819,6 +5848,26 @@ function atualizarStatusConexao() {
   } else {
     dot.className = "status-dot offline";
     label.textContent = "Modo Local";
+  }
+}
+
+/**
+ * 🛡️ Controla a visibilidade do banner de Modo Demonstração.
+ * Exibe o aviso quando os dados em tela são apenas de exemplo,
+ * garantindo que o usuário saiba que sua planilha real está protegida.
+ */
+function atualizarBannerDemo() {
+  const banner = document.getElementById("demo-mode-banner");
+  if (!banner) return;
+
+  // Só exibe o banner se: dados são demo E existe URL de Sheets configurada
+  // (sem URL, o usuário já sabe que está em modo local puro)
+  const deveExibir = AppState._dadosSaoDemonstracao && !!AppState.googleSheetsUrl;
+
+  if (deveExibir) {
+    banner.classList.remove("hidden");
+  } else {
+    banner.classList.add("hidden");
   }
 }
 
@@ -7549,6 +7598,18 @@ window.addEventListener("DOMContentLoaded", () => {
   atualizarBadgeTarefas();
   atualizarStatusConexao();
   aplicarTema(AppState.theme);
+  atualizarBannerDemo(); // 🛡️ Exibe aviso se estiver em Modo Demonstração com Sheets configurado
+
+  // Event listeners do banner de Modo Demonstração
+  document.getElementById("btn-demo-connect")?.addEventListener("click", () => {
+    document.getElementById("demo-mode-banner")?.classList.add("hidden");
+    // Abre o modal de configuração do Google Sheets
+    document.getElementById("opt-open-sheets-config")?.click();
+  });
+
+  document.getElementById("btn-demo-dismiss")?.addEventListener("click", () => {
+    document.getElementById("demo-mode-banner")?.classList.add("hidden");
+  });
 
   // Sincronização inicial com o Google Sheets se URL estiver configurada
   if (AppState.googleSheetsUrl) {
